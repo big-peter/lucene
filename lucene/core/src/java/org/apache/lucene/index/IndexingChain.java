@@ -60,9 +60,10 @@ import org.apache.lucene.util.RamUsageEstimator;
 final class IndexingChain implements Accountable {
 
   final Counter bytesUsed = Counter.newCounter();
-  final FieldInfos.Builder fieldInfos;
+  final FieldInfos.Builder fieldInfos;  // 保存该segment下所有的Field信息。
 
   // Writes postings and term vectors:
+  // 类型是FreqProxTermsWriter
   final TermsHash termsHash;
   // Shared pool for doc-value terms
   final ByteBlockPool docValuesBytePool;
@@ -73,15 +74,16 @@ final class IndexingChain implements Accountable {
   // NOTE: I tried using Hash Map<String,PerField>
   // but it was ~2% slower on Wiki and Geonames with Java
   // 1.7.0_25:
-  private PerField[] fieldHash = new PerField[2];
+  private PerField[] fieldHash = new PerField[2]; // 保存该segment中所有Field对应的PerField数据
   private int hashMask = 1;
 
   private int totalFieldCount;
   private long nextFieldGen;
 
   // Holds fields seen in each document
-  private PerField[] fields = new PerField[1];
+  private PerField[] fields = new PerField[1];  // 每次处理新doc时，重用fields和docFields
   private PerField[] docFields = new PerField[2];
+
   private final InfoStream infoStream;
   private final ByteBlockPool.Allocator byteBlockAllocator;
   private final LiveIndexWriterConfig indexWriterConfig;
@@ -570,6 +572,12 @@ final class IndexingChain implements Accountable {
     }
   }
 
+  /**
+   * 将document索引到内存中。注意该方法只由DWPT对象调用，即同一时刻该对象的该方法只有一个线程调用，保证线程安全。
+   * @param docID
+   * @param document
+   * @throws IOException
+   */
   void processDocument(int docID, Iterable<? extends IndexableField> document) throws IOException {
     // number of unique fields by names (collapses multiple field instances by the same name)
     int fieldCount = 0;
@@ -590,33 +598,40 @@ final class IndexingChain implements Accountable {
       // build schema for each unique doc field
       for (IndexableField field : document) {
         IndexableFieldType fieldType = field.fieldType();
+
+        // 获取该Field对应的PerField，如果没有则新建
         PerField pf = getOrAddPerField(field.name());
-        if (pf.fieldGen != fieldGen) { // first time we see this field in this document
+        if (pf.fieldGen != fieldGen) { // first time we see this field in this document。注意，一个文档可能有多个相同的Field
           fields[fieldCount++] = pf;
           pf.fieldGen = fieldGen;
           pf.reset(docID);
         }
         if (docFieldIdx >= docFields.length) oversizeDocFields();
-        docFields[docFieldIdx++] = pf;
+        docFields[docFieldIdx++] = pf;  // docFields不管Field是否相同，都会保存PerField的引用
         updateDocFieldSchema(field.name(), pf.schema, fieldType);
       }
+
       // For each field, if it the first time we see this field in this segment,
       // initialize its FieldInfo.
       // If we have already seen this field, verify that its schema
       // within the current doc matches its schema in the index.
+      // 如果在该segment中第一次遇到该Field，初始化相关数据。否则，验证schema是否匹配。
       for (int i = 0; i < fieldCount; i++) {
         PerField pf = fields[i];
-        if (pf.fieldInfo == null) {
+        if (pf.fieldInfo == null) { // 还没有设置fieldInfo数据，说明第一次遇到
           initializeFieldInfo(pf);
         } else {
+          // 验证schema是否匹配
           pf.schema.assertSameSchema(pf.fieldInfo);
         }
       }
 
       // 2nd pass over doc fields – index each field
       // also count the number of unique fields indexed with postings
+      // 逐个将所有Field保存到索引中
       docFieldIdx = 0;
       for (IndexableField field : document) {
+        // 将field保存到索引中
         if (processField(docID, field, docFields[docFieldIdx])) {
           fields[indexedFieldCount] = docFields[docFieldIdx];
           indexedFieldCount++;
@@ -665,6 +680,8 @@ final class IndexingChain implements Accountable {
       final Sort indexSort = indexWriterConfig.getIndexSort();
       validateIndexSortDVType(indexSort, pf.fieldName, s.docValuesType);
     }
+
+    // 将该Field的信息加入fieldInfos
     FieldInfo fi =
         fieldInfos.add(
             new FieldInfo(
@@ -685,9 +702,13 @@ final class IndexingChain implements Accountable {
                 s.vectorSimilarityFunction,
                 pf.fieldName.equals(fieldInfos.getSoftDeletesFieldName())));
     pf.setFieldInfo(fi);
+
+    // 如果需要建索引
     if (fi.getIndexOptions() != IndexOptions.NONE) {
+      // 初始化索引创建相关的对象
       pf.setInvertState();
     }
+
     DocValuesType dvType = fi.getDocValuesType();
     switch (dvType) {
       case NONE:
@@ -710,6 +731,8 @@ final class IndexingChain implements Accountable {
       default:
         throw new AssertionError("unrecognized DocValues.Type: " + dvType);
     }
+
+    // 点数据相关
     if (fi.getPointDimensionCount() != 0) {
       pf.pointValuesWriter = new PointValuesWriter(bytesUsed, fi);
     }
@@ -724,6 +747,7 @@ final class IndexingChain implements Accountable {
     boolean indexedField = false;
 
     // Invert indexed fields
+    // 保存倒排索引数据。按token保存。对应文件tim，tip
     if (fieldType.indexOptions() != IndexOptions.NONE) {
       if (pf.first) { // first time we see this field in this doc
         pf.invert(docID, field, true);
@@ -735,6 +759,7 @@ final class IndexingChain implements Accountable {
     }
 
     // Add stored fields
+    // 保存stored数据，即整个field的值。对应文件 fdm, fdx, fdt
     if (fieldType.stored()) {
       String value = field.stringValue();
       if (value != null && value.length() > IndexWriter.MAX_STORED_STRING_LENGTH) {
@@ -753,16 +778,22 @@ final class IndexingChain implements Accountable {
       }
     }
 
+    // 存储DocID到文档的正向关系，在排序或者统计计算时，通过DocID可以迅速取字段的值进行二次计算。对应文件 dvd, dvm
     DocValuesType dvType = fieldType.docValuesType();
     if (dvType != DocValuesType.NONE) {
       indexDocValue(docID, pf, dvType, field);
     }
+
+    // 保存点数据
     if (fieldType.pointDimensionCount() != 0) {
       pf.pointValuesWriter.addPackedValue(docID, field.binaryValue());
     }
+
+    // knnVector
     if (fieldType.vectorDimension() != 0) {
       pf.vectorValuesWriter.addValue(docID, ((KnnVectorField) field).vectorValue());
     }
+
     return indexedField;
   }
 
@@ -771,11 +802,14 @@ final class IndexingChain implements Accountable {
    * FieldType}, and creates a new {@link PerField} if this field name wasn't seen yet.
    */
   private PerField getOrAddPerField(String fieldName) {
+    // 从哈希表中获取fieldName对应的PerField。注意此处是拉链法解决哈希冲突，在BytesRefHash中是开地址法解决冲突。
     final int hashPos = fieldName.hashCode() & hashMask;
     PerField pf = fieldHash[hashPos];
     while (pf != null && pf.fieldName.equals(fieldName) == false) {
       pf = pf.next;
     }
+
+    // 如果不存在，说明第一次遇见该Field，新建
     if (pf == null) {
       // first time we encounter field with this name in this segment
       FieldSchema schema = new FieldSchema(fieldName);
@@ -787,10 +821,13 @@ final class IndexingChain implements Accountable {
               indexWriterConfig.getSimilarity(),
               indexWriterConfig.getInfoStream(),
               indexWriterConfig.getAnalyzer());
+      // 加入哈希表链表头部
       pf.next = fieldHash[hashPos];
       fieldHash[hashPos] = pf;
       totalFieldCount++;
+
       // At most 50% load factor:
+      // 扩容
       if (totalFieldCount >= fieldHash.length / 2) {
         rehash();
       }
@@ -957,7 +994,11 @@ final class IndexingChain implements Accountable {
     }
   }
 
-  /** Called from processDocument to index one field's doc value */
+  /**
+   * Called from processDocument to index one field's doc value
+   *
+   * 存储DocID到文档的正向关系，在排序或者统计计算时，通过DocID可以迅速取字段的值进行二次计算
+   */
   private void indexDocValue(int docID, PerField fp, DocValuesType dvType, IndexableField field) {
     switch (dvType) {
       case NUMERIC:
@@ -1079,7 +1120,10 @@ final class IndexingChain implements Accountable {
       invertState =
           new FieldInvertState(
               indexCreatedVersionMajor, fieldInfo.name, fieldInfo.getIndexOptions());
+
+      // 创建处理索引保存的termsHashPerField，注意termsHashPerField是一个链表
       termsHashPerField = termsHash.addField(invertState, fieldInfo);
+
       if (fieldInfo.omitsNorms() == false) {
         assert norms == null;
         // Even if no documents actually succeed in setting a norm, we still write norms for this
@@ -1123,6 +1167,7 @@ final class IndexingChain implements Accountable {
     public void invert(int docID, IndexableField field, boolean first) throws IOException {
       if (first) {
         // First time we're seeing this field (indexed) in this document
+        // 初始化position，len等数据，因为后面都是根据差值来计算的
         invertState.reset();
       }
 
@@ -1137,8 +1182,10 @@ final class IndexingChain implements Accountable {
         // reset the TokenStream to the first token
         stream.reset();
         invertState.setAttributeSource(stream);
+        // 初始化相关数据，主要是词频，payload，offset属性数据
         termsHashPerField.start(field, first);
 
+        // 迭代该Field下的所有token
         while (stream.incrementToken()) {
 
           // If we hit an exception in stream.next below
@@ -1148,8 +1195,11 @@ final class IndexingChain implements Accountable {
           // will be marked as deleted, but still
           // consume a docID
 
+          // 更新position信息
           int posIncr = invertState.posIncrAttribute.getPositionIncrement();
           invertState.position += posIncr;
+
+          /** 异常处理
           if (invertState.position < invertState.lastPosition) {
             if (posIncr == 0) {
               throw new IllegalArgumentException(
@@ -1182,6 +1232,9 @@ final class IndexingChain implements Accountable {
                     + "': max allowed position is "
                     + IndexWriter.MAX_POSITION);
           }
+          */
+
+          // 更新lastPosition信息
           invertState.lastPosition = invertState.position;
           if (posIncr == 0) {
             invertState.numOverlap++;
@@ -1202,6 +1255,8 @@ final class IndexingChain implements Accountable {
                     + field.name()
                     + "'");
           }
+
+          // 更新lastStartOffset信息
           invertState.lastStartOffset = startOffset;
 
           try {
@@ -1221,8 +1276,10 @@ final class IndexingChain implements Accountable {
           // corrupt and should not be flushed to a
           // new segment:
           try {
+            // 保存该词项的索引数据
             termsHashPerField.add(invertState.termAttribute.getBytesRef(), docID);
-          } catch (MaxBytesLengthExceededException e) {
+          }
+          catch (MaxBytesLengthExceededException e) {
             byte[] prefix = new byte[30];
             BytesRef bigTerm = invertState.termAttribute.getBytesRef();
             System.arraycopy(bigTerm.bytes, bigTerm.offset, prefix, 0, 30);
@@ -1240,13 +1297,15 @@ final class IndexingChain implements Accountable {
             }
             // Document will be deleted above:
             throw new IllegalArgumentException(msg, e);
-          } catch (Throwable th) {
+          }
+          catch (Throwable th) {
             onAbortingException(th);
             throw th;
           }
         }
 
         // trigger streams to perform end-of-stream operations
+        // 整个Field处理完成
         stream.end();
 
         // TODO: maybe add some safety? then again, it's already checked
@@ -1256,7 +1315,8 @@ final class IndexingChain implements Accountable {
 
         /* if there is an exception coming through, we won't set this to true here:*/
         succeededInProcessingField = true;
-      } finally {
+      }
+      finally {
         if (!succeededInProcessingField && infoStream.isEnabled("DW")) {
           infoStream.message(
               "DW", "An exception was thrown while processing field " + fieldInfo.name);

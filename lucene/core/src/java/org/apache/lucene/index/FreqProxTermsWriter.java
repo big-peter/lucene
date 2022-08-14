@@ -37,6 +37,9 @@ import org.apache.lucene.util.IntBlockPool;
 import org.apache.lucene.util.TimSorter;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
+/**
+ * 处理词频，位置等索引信息
+ */
 final class FreqProxTermsWriter extends TermsHash {
 
   FreqProxTermsWriter(

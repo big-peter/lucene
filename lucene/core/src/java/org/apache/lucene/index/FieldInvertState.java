@@ -29,6 +29,7 @@ import org.apache.lucene.util.AttributeSource;
  * The information collected in this class is also used to calculate the normalization factor for a
  * field.
  *
+ * 跟踪term的position/offset等信息
  * @lucene.experimental
  */
 public final class FieldInvertState {

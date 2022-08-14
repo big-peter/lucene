@@ -20,6 +20,10 @@ import java.io.IOException;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.search.DocIdSetIterator;
 
+/**
+ * 存储DocID到文档的正向关系，在排序或者统计计算时，通过DocID可以迅速取字段的值进行二次计算
+ * @param <T>
+ */
 abstract class DocValuesWriter<T extends DocIdSetIterator> {
   abstract void flush(SegmentWriteState state, Sorter.DocMap sortMap, DocValuesConsumer consumer)
       throws IOException;

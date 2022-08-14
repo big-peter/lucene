@@ -1,0 +1,1 @@
+elasticsearch is powful for search.

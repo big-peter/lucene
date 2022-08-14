@@ -31,6 +31,8 @@ import org.apache.lucene.util.IntBlockPool;
  * {@link ByteSliceReader} for each term. Terms are first deduplicated in a {@link BytesRefHash}
  * once this is done internal data-structures point to the current offset of each stream that can be
  * written to.
+ *
+ * PerField -> TermsHashPerField
  */
 abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
   private static final int HASH_INIT_SIZE = 4;
@@ -147,12 +149,15 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
    */
   private void initStreamSlices(int termID, int docID) throws IOException {
     // Init stream slices
+    // 需要初始化streamCount个slice，每个slice在intPool中需要一个item保存
+    // 检查是否需要扩容
     if (streamCount + intPool.intUpto > IntBlockPool.INT_BLOCK_SIZE) {
       // not enough space remaining in this buffer -- jump to next buffer and lose this remaining
       // piece
       intPool.nextBuffer();
     }
 
+    // bytePool是否需要扩容  TODO wj why * 2
     if (ByteBlockPool.BYTE_BLOCK_SIZE - bytePool.byteUpto
         < (2 * streamCount) * ByteBlockPool.FIRST_LEVEL_SIZE) {
       // can we fit at least one byte per stream in the current buffer, if not allocate a new one
@@ -160,18 +165,21 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     }
 
     termStreamAddressBuffer = intPool.buffer;
-    streamAddressOffset = intPool.intUpto;
+    streamAddressOffset = intPool.intUpto;  // 新term在intPool开始写入的下标
     intPool.intUpto += streamCount; // advance the pool to reserve the N streams for this term
 
-    postingsArray.addressOffset[termID] = streamAddressOffset + intPool.intOffset;
+    // 保存该term到intPool的下标映射
+    postingsArray.addressOffset[termID] = streamAddressOffset + intPool.intOffset;  // intOffset是前面所有buffer保存的item个数，这样相当于一维数组的下标
 
     for (int i = 0; i < streamCount; i++) {
       // initialize each stream with a slice we start with ByteBlockPool.FIRST_LEVEL_SIZE)
       // and grow as we need more space. see ByteBlockPool.LEVEL_SIZE_ARRAY
-      final int upto = bytePool.newSlice(ByteBlockPool.FIRST_LEVEL_SIZE);
-      termStreamAddressBuffer[streamAddressOffset + i] = upto + bytePool.byteOffset;
+      final int upto = bytePool.newSlice(ByteBlockPool.FIRST_LEVEL_SIZE); // 在bytePool上新分配slice
+      termStreamAddressBuffer[streamAddressOffset + i] = upto + bytePool.byteOffset;  // 保存该stream在bytePool上开始写入的下标
     }
-    postingsArray.byteStarts[termID] = termStreamAddressBuffer[streamAddressOffset];
+    postingsArray.byteStarts[termID] = termStreamAddressBuffer[streamAddressOffset];  // 保存该term到bytePool的docId&Frequency开始写入的下标映射
+
+    // 将未见过的term的统计信息写入内存中
     newTerm(termID, docID);
   }
 
@@ -190,15 +198,20 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     // We are first in the chain so we must "intern" the
     // term text into textStart address
     // Get the text & hash of this term.
+    // 如果该segment中还未遇到该词项，保存并返回termId。否则，返回之前的termId
     int termID = bytesHash.add(termBytes);
     // System.out.println("add term=" + termBytesRef.utf8ToString() + " doc=" + docState.docID + "
     // termID=" + termID);
     if (termID >= 0) { // New posting
       // Init stream slices
+      // 初始化新的slice，保存该term的索引数据
       initStreamSlices(termID, docID);
     } else {
+      // 从原来的slice中继续写
       termID = positionStreamSlice(termID, docID);
     }
+
+    // 判断下个处理器是否需要处理
     if (doNextCall) {
       nextPerField.add(postingsArray.textStarts[termID], docID);
     }
@@ -209,6 +222,8 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     int intStart = postingsArray.addressOffset[termID];
     termStreamAddressBuffer = intPool.buffers[intStart >> IntBlockPool.INT_BLOCK_SHIFT];
     streamAddressOffset = intStart & IntBlockPool.INT_BLOCK_MASK;
+
+    // 将已经见过的term的统计信息写入内存中
     addTerm(termID, docID);
     return termID;
   }
@@ -255,8 +270,10 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     }
   }
 
+  // 保存变长整数
   final void writeVInt(int stream, int i) {
     assert stream < streamCount;
+    // 变长数字保存
     while ((i & ~0x7F) != 0) {
       writeByte(stream, (byte) ((i & 0x7f) | 0x80));
       i >>>= 7;

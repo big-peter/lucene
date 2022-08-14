@@ -47,6 +47,7 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
       FieldInfo fieldInfo,
       TermsHashPerField nextPerField) {
     super(
+        // streamCount，如果只要保存docId和frequency，为1；否则，即还要保存position，offset，为2
         fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0
             ? 2
             : 1,
@@ -83,12 +84,17 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
 
   void writeProx(int termID, int proxCode) {
     if (payloadAttribute == null) {
+      // 如果不保存payload数据，直接保存position。注意是组合值
       writeVInt(1, proxCode << 1);
     } else {
+      // 要保存payload数据。先获取payload
       BytesRef payload = payloadAttribute.getPayload();
       if (payload != null && payload.length > 0) {
+        // 保存position信息，注意是组合值，最低位是1
         writeVInt(1, (proxCode << 1) | 1);
+        // 保存payload的长度
         writeVInt(1, payload.length);
+        // 保存payload的内容，offset，len
         writeBytes(1, payload.bytes, payload.offset, payload.length);
         sawPayloads = true;
       } else {
@@ -104,11 +110,14 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
     final int startOffset = offsetAccum + offsetAttribute.startOffset();
     final int endOffset = offsetAccum + offsetAttribute.endOffset();
     assert startOffset - freqProxPostingsArray.lastOffsets[termID] >= 0;
-    writeVInt(1, startOffset - freqProxPostingsArray.lastOffsets[termID]);
-    writeVInt(1, endOffset - startOffset);
+    // 写入开始offset
+    writeVInt(1, startOffset - freqProxPostingsArray.lastOffsets[termID]);  // 数字差值保存
+    // 写入结束offset
+    writeVInt(1, endOffset - startOffset);  // 数字差值保存
     freqProxPostingsArray.lastOffsets[termID] = startOffset;
   }
 
+  // 将未见过的term的统计信息写入内存中
   @Override
   void newTerm(final int termID, final int docID) {
     // First time we're seeing this term since the last
@@ -116,15 +125,22 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
     final FreqProxPostingsArray postings = freqProxPostingsArray;
 
     postings.lastDocIDs[termID] = docID;
+    // 不保存频次信息
     if (!hasFreq) {
       assert postings.termFreqs == null;
       postings.lastDocCodes[termID] = docID;
       fieldState.maxTermFrequency = Math.max(1, fieldState.maxTermFrequency);
-    } else {
+    }
+    // 要保存频次信息
+    else {
       postings.lastDocCodes[termID] = docID << 1;
       postings.termFreqs[termID] = getTermFreq();
+
+      // 要保存position信息
       if (hasProx) {
         writeProx(termID, fieldState.position);
+
+        // 要保存offset信息
         if (hasOffsets) {
           writeOffsets(termID, fieldState.offset);
         }
@@ -137,11 +153,13 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
     fieldState.uniqueTermCount++;
   }
 
+  // 将已经见过的term的统计信息写入内存中
   @Override
   void addTerm(final int termID, final int docID) {
     final FreqProxPostingsArray postings = freqProxPostingsArray;
     assert !hasFreq || postings.termFreqs[termID] > 0;
 
+    // 如果该Field不做频率统计
     if (!hasFreq) {
       assert postings.termFreqs == null;
       if (termFreqAtt.getTermFrequency() != 1) {
@@ -158,7 +176,9 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
         postings.lastDocIDs[termID] = docID;
         fieldState.uniqueTermCount++;
       }
-    } else if (docID != postings.lastDocIDs[termID]) {
+    }
+    // 如果该Field要做频次统计，且遇到了新doc
+    else if (docID != postings.lastDocIDs[termID]) {
       assert docID > postings.lastDocIDs[termID]
           : "id: " + docID + " postings ID: " + postings.lastDocIDs[termID] + " termID: " + termID;
       // Term not yet seen in the current doc but previously
@@ -166,9 +186,12 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
 
       // Now that we know doc freq for previous doc,
       // write it & lastDocCode
+      // 写入上一个docId，frequency信息。由于遇到了新文档，之前文档的频次已经知道了，可以写入bytePool中
       if (1 == postings.termFreqs[termID]) {
+        // 如果频次为1，将docId和frequency组合保存
         writeVInt(0, postings.lastDocCodes[termID] | 1);
       } else {
+        // 否则，将docId和frequency分开保存
         writeVInt(0, postings.lastDocCodes[termID]);
         writeVInt(0, postings.termFreqs[termID]);
       }
@@ -177,19 +200,25 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
       postings.termFreqs[termID] = getTermFreq();
       fieldState.maxTermFrequency =
           Math.max(postings.termFreqs[termID], fieldState.maxTermFrequency);
-      postings.lastDocCodes[termID] = (docID - postings.lastDocIDs[termID]) << 1;
+      postings.lastDocCodes[termID] = (docID - postings.lastDocIDs[termID]) << 1; // 数字增量保存
       postings.lastDocIDs[termID] = docID;
+
+      // 如果要保存位置信息(+payload)
       if (hasProx) {
-        writeProx(termID, fieldState.position);
+        writeProx(termID, fieldState.position); // 写入位置信息
+
+        // 如果要保存偏移量
         if (hasOffsets) {
           postings.lastOffsets[termID] = 0;
-          writeOffsets(termID, fieldState.offset);
+          writeOffsets(termID, fieldState.offset);  // 写入偏移量信息
         }
       } else {
         assert !hasOffsets;
       }
       fieldState.uniqueTermCount++;
-    } else {
+    }
+    // 还在处理之前的文档
+    else {
       postings.termFreqs[termID] = Math.addExact(postings.termFreqs[termID], getTermFreq());
       fieldState.maxTermFrequency =
           Math.max(fieldState.maxTermFrequency, postings.termFreqs[termID]);
@@ -251,9 +280,9 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
       // writeOffsets);
     }
 
-    int[] termFreqs; // # times this term occurs in the current doc
-    int[] lastDocIDs; // Last docID where this term occurred
-    int[] lastDocCodes; // Code for prior doc
+    int[] termFreqs; // # times this term occurs in the current doc。 termFreqs[i]表示词项i的频次是termFreqs[i]
+    int[] lastDocIDs; // Last docID where this term occurred。当遇到当前docId和lastDocId不一致时，说明遇到了新的doc
+    int[] lastDocCodes; // Code for prior doc。docId和频次的组合值
     int[] lastPositions; // Last position where this term occurred
     int[] lastOffsets; // Last endOffset where this term occurred
 

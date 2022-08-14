@@ -250,9 +250,11 @@ public final class BytesRefHash implements Accountable {
     final int hashPos = findHash(bytes);
     int e = ids[hashPos];
 
+    // 未遇到该term
     if (e == -1) {
       // new entry
-      final int len2 = 2 + bytes.length;
+      final int len2 = 2 + bytes.length;  // +2是因为还要保存length
+      // 如果pool需要扩容，先扩容
       if (len2 + pool.byteUpto > BYTE_BLOCK_SIZE) {
         if (len2 > BYTE_BLOCK_SIZE) {
           throw new MaxBytesLengthExceededException(
@@ -260,21 +262,27 @@ public final class BytesRefHash implements Accountable {
         }
         pool.nextBuffer();
       }
+
       final byte[] buffer = pool.buffer;
-      final int bufferUpto = pool.byteUpto;
+      final int bufferUpto = pool.byteUpto; // 开始写入下标
+
+      // 保存term -> poolIdx的数组是否需要扩容
       if (count >= bytesStart.length) {
         bytesStart = bytesStartArray.grow();
         assert count < bytesStart.length + 1 : "count: " + count + " len: " + bytesStart.length;
       }
+
+      // e即该term在该segment中的id。可以发现termId从0开始连续递增
       e = count++;
 
-      bytesStart[e] = bufferUpto + pool.byteOffset;
+      bytesStart[e] = bufferUpto + pool.byteOffset; // byteOffset是前面的多个buffer的元素个数，即bytesStart保存的是一维数组的下标。
 
       // We first encode the length, followed by the
       // bytes. Length is encoded as vInt, but will consume
       // 1 or 2 bytes at most (we reject too-long terms,
       // above).
-      if (length < 128) {
+      // 保存词项，格式是: len + term
+      if (length < 128) { // 只需要1字节保存长度
         // 1 byte to store length
         buffer[bufferUpto] = (byte) length;
         pool.byteUpto += length + 1;
@@ -287,13 +295,18 @@ public final class BytesRefHash implements Accountable {
         System.arraycopy(bytes.bytes, bytes.offset, buffer, bufferUpto + 2, length);
       }
       assert ids[hashPos] == -1;
+
+      // 添加到hash表中
       ids[hashPos] = e;
 
+      // 需要扩容
       if (count == hashHalfSize) {
         rehash(2 * hashSize, true);
       }
       return e;
     }
+
+    // 之前遇到了，返回-e-1
     return -(e + 1);
   }
 
@@ -307,6 +320,11 @@ public final class BytesRefHash implements Accountable {
     return ids[findHash(bytes)];
   }
 
+  /**
+   * 开地址法获取bytes的下标。如果不存在，则保证ids中至少有一个元素是-1，并返回该元素的下标
+   * @param bytes
+   * @return
+   */
   private int findHash(BytesRef bytes) {
     assert bytesStart != null : "bytesStart is null - not initialized";
 

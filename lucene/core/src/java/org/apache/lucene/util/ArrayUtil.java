@@ -748,4 +748,8 @@ public final class ArrayUtil {
     return Integer.compareUnsigned(
         (int) BitUtil.VH_BE_INT.get(a, aOffset), (int) BitUtil.VH_BE_INT.get(b, bOffset));
   }
+
+  public static void main(String[] args) {
+    System.out.println(ArrayUtil.oversize(16, 4));
+  }
 }

@@ -34,6 +34,9 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntBlockPool;
 import org.apache.lucene.util.RamUsageEstimator;
 
+/**
+ * 处理词向量信息
+ */
 class TermVectorsConsumer extends TermsHash {
   protected final Directory directory;
   protected final SegmentInfo info;
