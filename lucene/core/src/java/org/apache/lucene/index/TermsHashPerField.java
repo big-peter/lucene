@@ -136,6 +136,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
   // 写入词向量的方法入口。
   private void add(int textStart, final int docID) throws IOException {
     int termID = bytesHash.addByPoolOffset(textStart);
+    // 新的term
     if (termID >= 0) { // New posting
       // First time we are seeing this token since we last
       // flushed the hash.
@@ -182,7 +183,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     }
     postingsArray.byteStarts[termID] = termStreamAddressBuffer[streamAddressOffset];  // 保存该term到bytePool的docId&Frequency开始写入的下标映射
 
-    // 将未见过的term的统计信息写入内存中
+    // 将未见过的term的统计信息写入内存中。具体由子类实现
     newTerm(termID, docID);
   }
 
@@ -370,14 +371,18 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
   }
 
   /** Called when a term is seen for the first time. */
+  // 将新遇到的term加入到内存索引中
   abstract void newTerm(int termID, final int docID) throws IOException;
 
   /** Called when a previously seen term is seen again. */
+  // 将已经遇到过的新term加入内存索引中
   abstract void addTerm(int termID, final int docID) throws IOException;
 
   /** Called when the postings array is initialized or resized. */
+  // 子类成员变量赋值
   abstract void newPostingsArray();
 
   /** Creates a new postings array of the specified size. */
+  // 创建保存term到bytePool，intPool的映射的对象
   abstract ParallelPostingsArray createPostingsArray(int size);
 }

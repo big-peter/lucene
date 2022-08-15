@@ -618,7 +618,8 @@ final class IndexingChain implements Accountable {
       // 如果在该segment中第一次遇到该Field，初始化相关数据。否则，验证schema是否匹配。
       for (int i = 0; i < fieldCount; i++) {
         PerField pf = fields[i];
-        if (pf.fieldInfo == null) { // 还没有设置fieldInfo数据，说明第一次遇到
+        // 还没有设置fieldInfo数据，说明第一次遇到
+        if (pf.fieldInfo == null) {
           initializeFieldInfo(pf);
         } else {
           // 验证schema是否匹配
@@ -709,6 +710,7 @@ final class IndexingChain implements Accountable {
       pf.setInvertState();
     }
 
+    // 根据DocValuesType设置docValuesWriter
     DocValuesType dvType = fi.getDocValuesType();
     switch (dvType) {
       case NONE:
@@ -732,10 +734,12 @@ final class IndexingChain implements Accountable {
         throw new AssertionError("unrecognized DocValues.Type: " + dvType);
     }
 
-    // 点数据相关
+    // 设置点数据writer相关
     if (fi.getPointDimensionCount() != 0) {
       pf.pointValuesWriter = new PointValuesWriter(bytesUsed, fi);
     }
+
+    //
     if (fi.getVectorDimension() != 0) {
       pf.vectorValuesWriter = new VectorValuesWriter(fi, bytesUsed);
     }
@@ -747,7 +751,7 @@ final class IndexingChain implements Accountable {
     boolean indexedField = false;
 
     // Invert indexed fields
-    // 保存倒排索引数据。按token保存。对应文件tim，tip
+    // 保存倒排索引数据和词向量数据。对应文件tim，tip, tv, tvd, tvx, tvm
     if (fieldType.indexOptions() != IndexOptions.NONE) {
       if (pf.first) { // first time we see this field in this doc
         pf.invert(docID, field, true);

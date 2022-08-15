@@ -242,6 +242,10 @@ public final class BytesRefHash implements Accountable {
    *     &gt;= 0 if the given bytes haven't been hashed before.
    * @throws MaxBytesLengthExceededException if the given bytes are {@code > 2 +} {@link
    *     ByteBlockPool#BYTE_BLOCK_SIZE}
+   *
+   * 将bytes加入到hash表中，key是bytes，value是termId。value即termId保存在ids中，映射的termStr通过下列方式找到。
+   *    offset=bytesStart[termId], termStr=bytePool[offset:len]
+   * 返回termId。
    */
   public int add(BytesRef bytes) {
     assert bytesStart != null : "Bytesstart is null - not initialized";
@@ -351,6 +355,8 @@ public final class BytesRefHash implements Accountable {
    * the hash for term vectors, because they do not redundantly store the byte[] term directly and
    * instead reference the byte[] term already stored by the postings BytesRefHash. See add(int
    * textStart) in TermsHashPerField.
+   *
+   * 将offset加入到hash表中，val也是offset。返回termId
    */
   public int addByPoolOffset(int offset) {
     assert bytesStart != null : "Bytesstart is null - not initialized";

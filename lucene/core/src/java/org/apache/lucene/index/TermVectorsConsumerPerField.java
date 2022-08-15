@@ -142,10 +142,12 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
         reset();
       }
 
+      // 重新初始化bytesHash
       reinitHash();
 
       hasPayloads = false;
 
+      // 是否需要保存termVector
       doVectors = field.fieldType().storeTermVectors();
 
       if (doVectors) {
@@ -239,6 +241,7 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
   }
 
   void writeProx(TermVectorsPostingsArray postings, int termID) {
+    // 需要offset
     if (doVectorOffsets) {
       int startOffset = fieldState.offset + offsetAttribute.startOffset();
       int endOffset = fieldState.offset + offsetAttribute.endOffset();
@@ -248,6 +251,7 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
       postings.lastOffsets[termID] = endOffset;
     }
 
+    // 需要position
     if (doVectorPositions) {
       final BytesRef payload;
       if (payloadAttribute == null) {
@@ -273,6 +277,7 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
   void newTerm(final int termID, final int docID) {
     TermVectorsPostingsArray postings = termVectorsPostingsArray;
 
+    // 初始化
     postings.freqs[termID] = getTermFreq();
     postings.lastOffsets[termID] = 0;
     postings.lastPositions[termID] = 0;
