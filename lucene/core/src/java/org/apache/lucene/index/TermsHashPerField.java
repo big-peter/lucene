@@ -131,6 +131,9 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
   // because token text has already been "interned" into
   // textStart, so we hash by textStart.  term vectors use
   // this API.
+  //
+  // 注意和方法void add(BytesRef termBytes, final int docID)签名不同
+  // 写入词向量的方法入口。
   private void add(int textStart, final int docID) throws IOException {
     int termID = bytesHash.addByPoolOffset(textStart);
     if (termID >= 0) { // New posting
@@ -289,6 +292,9 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     return fieldName;
   }
 
+  /**
+   * 可以认为是ParallelPostingsArray的封装类，freq和termvector分别有自己的实现
+   */
   private static final class PostingsBytesStartArray extends BytesStartArray {
 
     private final TermsHashPerField perField;

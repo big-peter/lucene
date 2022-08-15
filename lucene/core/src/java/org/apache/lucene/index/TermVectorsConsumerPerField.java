@@ -162,13 +162,15 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
           if (field.fieldType().storeTermVectorPayloads()) {
             // TODO: move this check somewhere else, and impl the other missing ones
             throw new IllegalArgumentException(
-                "cannot index term vector payloads without term vector positions (field=\""
-                    + field.name()
-                    + "\")");
+                    "cannot index term vector payloads without term vector positions (field=\""
+                            + field.name()
+                            + "\")");
           }
         }
 
-      } else {
+      }
+      /* exception case
+      else {
         if (field.fieldType().storeTermVectorOffsets()) {
           throw new IllegalArgumentException(
               "cannot index term vector offsets when term vectors are not indexed (field=\""
@@ -188,7 +190,10 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
                   + "\")");
         }
       }
-    } else {
+      */
+    }
+    /* exception case
+    else {
       if (doVectors != field.fieldType().storeTermVectors()) {
         throw new IllegalArgumentException(
             "all instances of a given field name must have the same term vectors settings (storeTermVectors changed for field=\""
@@ -214,6 +219,7 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
                 + "\")");
       }
     }
+   */
 
     if (doVectors) {
       if (doVectorOffsets) {

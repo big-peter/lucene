@@ -1124,12 +1124,15 @@ final class IndexingChain implements Accountable {
       // 创建处理索引保存的termsHashPerField，注意termsHashPerField是一个链表
       termsHashPerField = termsHash.addField(invertState, fieldInfo);
 
+      // 如果要保存norm数据
       if (fieldInfo.omitsNorms() == false) {
         assert norms == null;
         // Even if no documents actually succeed in setting a norm, we still write norms for this
         // segment
         norms = new NormValuesWriter(fieldInfo, bytesUsed);
       }
+
+      //
       if (fieldInfo.hasVectors()) {
         termVectorsWriter.setHasVectors();
       }
