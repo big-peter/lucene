@@ -294,7 +294,9 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
   }
 
   /**
-   * 可以认为是ParallelPostingsArray的封装类，freq和termvector分别有自己的实现
+   * 可以认为是ParallelPostingsArray的封装类，freq和termvector分别有自己的实现。
+   *
+   * 提供init,grow,clear回调方法来处理ParallelPostingsArray
    */
   private static final class PostingsBytesStartArray extends BytesStartArray {
 
