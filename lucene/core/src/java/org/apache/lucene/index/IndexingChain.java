@@ -645,6 +645,7 @@ final class IndexingChain implements Accountable {
         for (int i = 0; i < indexedFieldCount; i++) {
           fields[i].finish(docID);
         }
+
         finishStoredFields();
         // TODO: for broken docs, optimize termsHash.finishDocument
         try {
@@ -775,6 +776,7 @@ final class IndexingChain implements Accountable {
                 + " characters) to store");
       }
       try {
+        // 将该字段写入到内存缓冲中 ByteBuffersDataOutput: FieldNum+codeType val
         storedFieldsConsumer.writeField(pf.fieldInfo, field);
       } catch (Throwable th) {
         onAbortingException(th);
@@ -1148,6 +1150,7 @@ final class IndexingChain implements Accountable {
     }
 
     public void finish(int docID) throws IOException {
+      // 写norm数据
       if (fieldInfo.omitsNorms() == false) {
         long normValue;
         if (invertState.length == 0) {
@@ -1164,6 +1167,8 @@ final class IndexingChain implements Accountable {
         }
         norms.addValue(docID, normValue);
       }
+
+      // 标志位设置，termVector状态设置
       termsHashPerField.finish();
     }
 

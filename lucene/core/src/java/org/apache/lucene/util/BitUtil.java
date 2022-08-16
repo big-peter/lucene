@@ -210,6 +210,8 @@ public final class BitUtil {
    * the provided long. Assuming the input is a signed long whose absolute value can be stored on
    * <code>n</code> bits, the returned value will be an unsigned long that can be stored on <code>
    * n+1</code> bits.
+   *
+   * -n-1 ~ n => 0 ~ 2n
    */
   public static long zigZagEncode(long l) {
     return (l >> 63) ^ (l << 1);

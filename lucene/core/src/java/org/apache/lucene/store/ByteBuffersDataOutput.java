@@ -108,7 +108,7 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
   /** Current block size: {@code 2^bits}. */
   private int blockBits;
 
-  /** Blocks storing data. */
+  /** Blocks storing data. 一个ByteBuffer是一个block */
   private final ArrayDeque<ByteBuffer> blocks = new ArrayDeque<>();
 
   /** Cumulative RAM usage across all blocks. */
@@ -372,6 +372,7 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
   @Override
   public void writeShort(short v) {
     try {
+      // 保证一个整数写在一个block中
       if (currentBlock.remaining() >= Short.BYTES) {
         currentBlock.putShort(v);
       } else {

@@ -59,7 +59,11 @@ public abstract class IndexOutput extends DataOutput implements Closeable {
     return name;
   }
 
-  /** Closes this stream to further operations. */
+  /**
+   * Closes this stream to further operations.
+   *
+   * 会调用os.flush()
+   * */
   @Override
   public abstract void close() throws IOException;
 

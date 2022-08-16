@@ -70,6 +70,8 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
     if (!doVectors || getNumTerms() == 0) {
       return;
     }
+
+    // 将自己加入到 TermVectorsConsumer.perFields数组中
     termsWriter.addFieldToFlush(this);
   }
 

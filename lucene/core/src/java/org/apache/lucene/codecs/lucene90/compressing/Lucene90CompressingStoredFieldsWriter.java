@@ -87,8 +87,12 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
   private final int maxDocsPerChunk;
 
   private final ByteBuffersDataOutput bufferedDocs;
+
+  // arr[i]表示文档i有arr[i]个field
   private int[] numStoredFields; // number of stored fields
+  // arr[i]表示文档i在ByteBuffersDataOutput中的偏移量
   private int[] endOffsets; // end offsets in bufferedDocs
+
   private int docBase; // doc ID at the beginning of the chunk
   private int numBufferedDocs; // docBase + numBufferedDocs == current doc ID
 
@@ -122,6 +126,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
 
     boolean success = false;
     try {
+      // fdm file
       metaStream =
           directory.createOutput(
               IndexFileNames.segmentFileName(segment, segmentSuffix, META_EXTENSION), context);
@@ -130,6 +135,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
       assert CodecUtil.indexHeaderLength(INDEX_CODEC_NAME + "Meta", segmentSuffix)
           == metaStream.getFilePointer();
 
+      // fdt file
       fieldsStream =
           directory.createOutput(
               IndexFileNames.segmentFileName(segment, segmentSuffix, FIELDS_EXTENSION), context);
@@ -138,6 +144,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
       assert CodecUtil.indexHeaderLength(formatName, segmentSuffix)
           == fieldsStream.getFilePointer();
 
+      // fdx file
       indexWriter =
           new FieldsIndexWriter(
               directory,
@@ -178,16 +185,20 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
 
   @Override
   public void finishDocument() throws IOException {
+    // 扩容
     if (numBufferedDocs == this.numStoredFields.length) {
       final int newLength = ArrayUtil.oversize(numBufferedDocs + 1, 4);
       this.numStoredFields = ArrayUtil.growExact(this.numStoredFields, newLength);
       endOffsets = ArrayUtil.growExact(endOffsets, newLength);
     }
+
+    // 保存fieldsnum，endOffSet数据
     this.numStoredFields[numBufferedDocs] = numStoredFieldsInDoc;
     numStoredFieldsInDoc = 0;
     endOffsets[numBufferedDocs] = Math.toIntExact(bufferedDocs.size());
     ++numBufferedDocs;
     if (triggerFlush()) {
+      // 满足chunk条件，flush
       flush(false);
     }
   }
@@ -221,6 +232,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
     saveInts(lengths, numBufferedDocs, fieldsStream);
   }
 
+  // 如果内存占用大于chunkSize(81KB)或内存中文档数大于maxDocsPerChunk(1024)
   private boolean triggerFlush() {
     return bufferedDocs.size() >= chunkSize
         || // chunks of at least chunkSize bytes
@@ -234,6 +246,8 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
       numDirtyChunks++; // incomplete: we had to force this flush
       numDirtyDocs += numBufferedDocs;
     }
+
+    // indexWriter是FieldsIndexWriter，不是IndexWriter。用来写fdx文件
     indexWriter.writeIndex(numBufferedDocs, fieldsStream.getFilePointer());
 
     // transform end offsets into lengths
@@ -242,6 +256,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
       lengths[i] = endOffsets[i] - endOffsets[i - 1];
       assert lengths[i] >= 0;
     }
+
     final boolean sliced = bufferedDocs.size() >= 2 * chunkSize;
     final boolean dirtyChunk = force;
     writeHeader(docBase, numBufferedDocs, numStoredFields, lengths, sliced, dirtyChunk);
@@ -310,7 +325,7 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
         }
       }
     }
-
+    // 先写fieldNumber+type
     final long infoAndBits = (((long) info.number) << TYPE_BITS) | bits;
     bufferedDocs.writeVLong(infoAndBits);
 

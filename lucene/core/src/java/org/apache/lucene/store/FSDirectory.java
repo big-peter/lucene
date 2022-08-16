@@ -389,11 +389,13 @@ public abstract class FSDirectory extends BaseDirectory {
       super(
           "FSIndexOutput(path=\"" + directory.resolve(name) + "\")",
           name,
+          // Files.newOutputStream。用FilterOutputStream封装是为了按8KB大小写
           new FilterOutputStream(Files.newOutputStream(directory.resolve(name), options)) {
             // This implementation ensures, that we never write more than CHUNK_SIZE bytes:
             @Override
             public void write(byte[] b, int offset, int length) throws IOException {
               while (length > 0) {
+                // 每次写8kb
                 final int chunk = Math.min(length, CHUNK_SIZE);
                 out.write(b, offset, chunk);
                 length -= chunk;

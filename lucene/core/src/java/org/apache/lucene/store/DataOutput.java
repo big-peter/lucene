@@ -65,6 +65,8 @@ public abstract class DataOutput {
   /**
    * Writes an int as four bytes (LE byte order).
    *
+   * i = abcd
+   *
    * @see DataInput#readInt()
    * @see BitUtil#VH_LE_INT
    */
@@ -87,6 +89,8 @@ public abstract class DataOutput {
   }
 
   /**
+   * 变长整数编码
+   *
    * Writes an int in a variable-length format. Writes between one and five bytes. Smaller values
    * take fewer bytes. Negative numbers are supported, but should be avoided.
    *
@@ -196,14 +200,21 @@ public abstract class DataOutput {
    * @see DataInput#readVInt()
    */
   public final void writeVInt(int i) throws IOException {
+    // 判断除了低7位其他位是否都为0，即判断是否需要多个字节存储
     while ((i & ~0x7F) != 0) {
+      // 将低7位和标志位写入
       writeByte((byte) ((i & 0x7F) | 0x80));
+      // 更新i
       i >>>= 7;
     }
+
+    // 将低7位写入
     writeByte((byte) i);
   }
 
   /**
+   * zigZag变长整数编码
+   *
    * Write a {@link BitUtil#zigZagEncode(int) zig-zag}-encoded {@link #writeVInt(int)
    * variable-length} integer. This is typically useful to write small signed ints and is equivalent
    * to calling <code>writeVInt(BitUtil.zigZagEncode(i))</code>.
