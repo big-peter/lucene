@@ -74,14 +74,16 @@ final class IndexingChain implements Accountable {
   // NOTE: I tried using Hash Map<String,PerField>
   // but it was ~2% slower on Wiki and Geonames with Java
   // 1.7.0_25:
-  private PerField[] fieldHash = new PerField[2]; // 保存该segment中所有Field对应的PerField数据
+  // 保存该segment中所有Field对应的PerField数据
+  private PerField[] fieldHash = new PerField[2];
   private int hashMask = 1;
 
   private int totalFieldCount;
   private long nextFieldGen;
 
   // Holds fields seen in each document
-  private PerField[] fields = new PerField[1];  // 每次处理新doc时，重用fields和docFields
+  // 每次处理新doc时，重用fields和docFields
+  private PerField[] fields = new PerField[1];
   private PerField[] docFields = new PerField[2];
 
   private final InfoStream infoStream;
@@ -591,7 +593,9 @@ final class IndexingChain implements Accountable {
     // analyzer is free to reuse TokenStream across fields
     // (i.e., we cannot have more than one TokenStream
     // running "at once"):
+    // TermVectorsConsumer重置统计数据，TVCPerField重置
     termsHash.startDocument();
+    // storedFieldsConsumer重置数据
     startStoredFields(docID);
     try {
       // 1st pass over doc fields – verify that doc schema matches the index schema
@@ -601,13 +605,16 @@ final class IndexingChain implements Accountable {
 
         // 获取该Field对应的PerField，如果没有则新建
         PerField pf = getOrAddPerField(field.name());
-        if (pf.fieldGen != fieldGen) { // first time we see this field in this document。注意，一个文档可能有多个相同的Field
+        // 注意，一个文档可能有多个相同的Field。每处理一片文档，fieldGen就增1,所以通过fieldGen可以判断是否是这篇doc中第一次遇到该field
+        if (pf.fieldGen != fieldGen) { // first time we see this field in this document。
           fields[fieldCount++] = pf;
           pf.fieldGen = fieldGen;
           pf.reset(docID);
         }
         if (docFieldIdx >= docFields.length) oversizeDocFields();
-        docFields[docFieldIdx++] = pf;  // docFields不管Field是否相同，都会保存PerField的引用
+        // docFields不管Field是否相同，都会保存对应PerField的引用
+        docFields[docFieldIdx++] = pf;
+        // 更新schema
         updateDocFieldSchema(field.name(), pf.schema, fieldType);
       }
 
@@ -632,7 +639,13 @@ final class IndexingChain implements Accountable {
       // 逐个将所有Field保存到索引中
       docFieldIdx = 0;
       for (IndexableField field : document) {
-        // 将field保存到索引中
+        // 将倒排索引数据，termVector数据，storedField数据，point数据保存到内存缓冲中
+        // 内存缓冲（jvm heap中）：
+        //    倒排索引，tv：ByteBlockPool, IntBlockPool，ParallelPostingsArray(FreqProxPostingsArray, TermVectorsPostingsArray)
+        //    storedField：ByteBuffersDataOutput(ArrayDeque<ByteBuffer> blocks)
+        //    docValue：PagedBytesDataOutput(byte[][] blocks)
+        //    point: PagedBytesDataOutput(byte[][] blocks)
+        //    knn: List<float[]> vectors
         if (processField(docID, field, docFields[docFieldIdx])) {
           fields[indexedFieldCount] = docFields[docFieldIdx];
           indexedFieldCount++;
@@ -640,15 +653,19 @@ final class IndexingChain implements Accountable {
         docFieldIdx++;
       }
     } finally {
+      // 如果没有发生异常
       if (hasHitAbortingException == false) {
         // Finish each indexed field name seen in the document:
         for (int i = 0; i < indexedFieldCount; i++) {
+          // 保存norm数据，termsHashPerField设置状态
           fields[i].finish(docID);
         }
 
+        // sotredFields内存数据中标识一篇文档finish，如果满足条件，flush field数据
         finishStoredFields();
         // TODO: for broken docs, optimize termsHash.finishDocument
         try {
+          // 将byteBlockPool中的termVector数据存到TermVectorsWriter堆内存中，如果满足条件，flush termVector数据
           termsHash.finishDocument(docID);
         } catch (Throwable th) {
           // Must abort, on the possibility that on-disk term
@@ -752,7 +769,7 @@ final class IndexingChain implements Accountable {
     boolean indexedField = false;
 
     // Invert indexed fields
-    // 保存倒排索引数据和词向量数据。对应文件tim，tip, tv, tvd, tvx, tvm
+    // 保存倒排索引数据和词向量数据。对应文件tim，tip, tvd, tvx, tvm
     if (fieldType.indexOptions() != IndexOptions.NONE) {
       if (pf.first) { // first time we see this field in this doc
         pf.invert(docID, field, true);
@@ -833,10 +850,11 @@ final class IndexingChain implements Accountable {
       totalFieldCount++;
 
       // At most 50% load factor:
-      // 扩容
+      // fieldHash[]扩容
       if (totalFieldCount >= fieldHash.length / 2) {
         rehash();
       }
+      // fields[]扩容
       if (totalFieldCount > fields.length) {
         PerField[] newFields =
             new PerField

@@ -169,19 +169,25 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     }
 
     termStreamAddressBuffer = intPool.buffer;
-    streamAddressOffset = intPool.intUpto;  // 新term在intPool开始写入的下标
+    // 新term在intPool开始写入的下标
+    streamAddressOffset = intPool.intUpto;
     intPool.intUpto += streamCount; // advance the pool to reserve the N streams for this term
 
     // 保存该term到intPool的下标映射
-    postingsArray.addressOffset[termID] = streamAddressOffset + intPool.intOffset;  // intOffset是前面所有buffer保存的item个数，这样相当于一维数组的下标
+    // intOffset是前面所有buffer保存的item个数，这样相当于一维数组的下标
+    postingsArray.addressOffset[termID] = streamAddressOffset + intPool.intOffset;
 
     for (int i = 0; i < streamCount; i++) {
       // initialize each stream with a slice we start with ByteBlockPool.FIRST_LEVEL_SIZE)
       // and grow as we need more space. see ByteBlockPool.LEVEL_SIZE_ARRAY
-      final int upto = bytePool.newSlice(ByteBlockPool.FIRST_LEVEL_SIZE); // 在bytePool上新分配slice
-      termStreamAddressBuffer[streamAddressOffset + i] = upto + bytePool.byteOffset;  // 保存该stream在bytePool上开始写入的下标
+      // 在bytePool上新分配slice
+      final int upto = bytePool.newSlice(ByteBlockPool.FIRST_LEVEL_SIZE);
+      // 保存该stream在bytePool上开始写入的下标
+      termStreamAddressBuffer[streamAddressOffset + i] = upto + bytePool.byteOffset;
     }
-    postingsArray.byteStarts[termID] = termStreamAddressBuffer[streamAddressOffset];  // 保存该term到bytePool的docId&Frequency开始写入的下标映射
+
+    // 保存该term到bytePool的docId&Frequency开始写入的下标映射
+    postingsArray.byteStarts[termID] = termStreamAddressBuffer[streamAddressOffset];
 
     // 将未见过的term的统计信息写入内存中。具体由子类实现
     newTerm(termID, docID);
