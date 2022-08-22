@@ -309,7 +309,8 @@ public final class Lucene90CompressingStoredFieldsWriter extends StoredFieldsWri
       }
       string = null;
       bytes = null;
-    } else {
+    }
+    else {
       bytes = field.binaryValue();
       if (bytes != null) {
         bits = BYTE_ARR;
