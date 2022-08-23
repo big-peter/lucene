@@ -71,6 +71,7 @@ abstract class TermsHash {
     if (nextTermsHash != null) {
       // We are primary
       // termBytePool和bytePool共用一个ByteBlockPool。即存储term和docId，frequency,position是在一个ByteBlockPool中
+      // termVector和freq使用同一个termBytePool.
       termBytePool = bytePool;
       nextTermsHash.termBytePool = bytePool;
     }

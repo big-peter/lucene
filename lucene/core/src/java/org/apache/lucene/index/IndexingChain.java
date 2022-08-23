@@ -1186,7 +1186,8 @@ final class IndexingChain implements Accountable {
         norms.addValue(docID, normValue);
       }
 
-      // 标志位设置，termVector状态设置
+      // FreqProxTermsWriterPerField标志位设置: fieldInfo.setStorePayloads()
+      // TermVectorsConsumerPerField: 将自己加入到 TermVectorsConsumer.perFields数组中
       termsHashPerField.finish();
     }
 
@@ -1292,7 +1293,8 @@ final class IndexingChain implements Accountable {
           try {
             invertState.length =
                 Math.addExact(invertState.length, invertState.termFreqAttribute.getTermFrequency());
-          } catch (ArithmeticException ae) {
+          }
+          catch (ArithmeticException ae) {
             throw new IllegalArgumentException(
                 "too many tokens for field \"" + field.name() + "\"", ae);
           }
