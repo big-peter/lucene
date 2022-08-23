@@ -869,6 +869,7 @@ final class IndexingChain implements Accountable {
   // update schema for field as seen in a particular document
   private static void updateDocFieldSchema(
       String fieldName, FieldSchema schema, IndexableFieldType fieldType) {
+    // 倒排表，词向量，norm相关
     if (fieldType.indexOptions() != IndexOptions.NONE) {
       schema.setIndexOptions(
           fieldType.indexOptions(), fieldType.omitNorms(), fieldType.storeTermVectors());
@@ -876,15 +877,18 @@ final class IndexingChain implements Accountable {
       // TODO: should this be checked when a fieldType is created?
       verifyUnIndexedFieldType(fieldName, fieldType);
     }
+    // docValue相关
     if (fieldType.docValuesType() != DocValuesType.NONE) {
       schema.setDocValues(fieldType.docValuesType());
     }
+    // point相关
     if (fieldType.pointDimensionCount() != 0) {
       schema.setPoints(
           fieldType.pointDimensionCount(),
           fieldType.pointIndexDimensionCount(),
           fieldType.pointNumBytes());
     }
+    // knn相关
     if (fieldType.vectorDimension() != 0) {
       schema.setVectors(fieldType.vectorSimilarityFunction(), fieldType.vectorDimension());
     }

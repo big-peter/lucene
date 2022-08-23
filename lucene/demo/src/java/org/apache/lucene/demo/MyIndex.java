@@ -44,20 +44,20 @@ public class MyIndex {
         iwc.setUseCompoundFile(false);
 //        iwc.setCodec(new SimpleTextCodec());
 
-        FieldType textType = new FieldType();
-        textType.setOmitNorms(false);
+        FieldType fieldType = new FieldType();
+        fieldType.setOmitNorms(false);
 
-        textType.setStored(true);
+        fieldType.setStored(true);
 
-        textType.setStoreTermVectors(true);
-        textType.setStoreTermVectorPositions(true);
-        textType.setStoreTermVectorPayloads(true);
-        textType.setStoreTermVectorOffsets(true);
+        fieldType.setStoreTermVectors(true);
+        fieldType.setStoreTermVectorPositions(true);
+        fieldType.setStoreTermVectorPayloads(true);
+        fieldType.setStoreTermVectorOffsets(true);
 
-        textType.setTokenized(true);
-        textType.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
+        fieldType.setTokenized(true);
+        fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
 
-        textType.freeze();
+        fieldType.freeze();
 
         FieldType sortType = new FieldType();
         sortType.setOmitNorms(false);
@@ -78,7 +78,7 @@ public class MyIndex {
         try (IndexWriter indexWriter = new IndexWriter(directory, iwc)) {
             for (int i=0; i < rawDocs.length; i+=2) {
                 Document document = new Document();
-                document.add(new Field("content", rawDocs[i], textType));
+                document.add(new Field("content", rawDocs[i], fieldType));
                 document.add(new Field("title", rawDocs[i + 1].getBytes(StandardCharsets.UTF_8), sortType));
 
                 indexWriter.addDocument(document);
