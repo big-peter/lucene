@@ -200,6 +200,9 @@ public final class BitUtil {
     return ((b & MAGIC6) >>> 1) | ((b & MAGIC0) << 1);
   }
 
+  // 0 -> 0
+  // 正数i -> 2 * i
+  // 负数i -> 2 * |i| - 1
   /** Same as {@link #zigZagEncode(long)} but on integers. */
   public static int zigZagEncode(int i) {
     return (i >> 31) ^ (i << 1);
@@ -225,5 +228,9 @@ public final class BitUtil {
   /** Decode a long previously encoded with {@link #zigZagEncode(long)}. */
   public static long zigZagDecode(long l) {
     return ((l >>> 1) ^ -(l & 1));
+  }
+
+  public static void main(String[] args) {
+    System.out.println(zigZagEncode(2));
   }
 }
