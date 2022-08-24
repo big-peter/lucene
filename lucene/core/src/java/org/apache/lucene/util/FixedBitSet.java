@@ -625,4 +625,13 @@ public final class FixedBitSet extends BitSet {
   public Bits asReadOnlyBits() {
     return new FixedBits(bits, numBits);
   }
+
+  public static void main(String[] args) {
+    FixedBitSet fixedBitSet = new FixedBitSet(65);
+    fixedBitSet.set(64);
+    System.out.println(fixedBitSet.get(64));
+
+    System.out.println(1 << 63);
+    System.out.println(1L << 64);
+  }
 }
