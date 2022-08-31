@@ -119,6 +119,7 @@ class BufferedUpdates implements Accountable {
   }
 
   public void addQuery(Query query, int docIDUpto) {
+    // TODO wj diff from addTerm
     Integer current = deleteQueries.put(query, docIDUpto);
     // increment bytes used only if the query wasn't added so far.
     if (current == null) {
