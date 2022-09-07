@@ -8,18 +8,39 @@ import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.*;
 
+import java.io.BufferedOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.util.Collections;
 
 /**
  * @author BigPeter
  * @date 2021-03-30 13:52
  */
 public class MyIndex {
+
+    public static void osDemo(String[] args) throws IOException {
+        // raw java
+        FileOutputStream fos = new FileOutputStream("./resources/my/osdemo/file1.txt");
+        BufferedOutputStream bos = new BufferedOutputStream(fos);
+        bos.write("Hello World".getBytes(StandardCharsets.UTF_8), 0, 11);
+        bos.flush();
+        fos.getFD().sync();
+        // fos.getChannel().force(true);  或者该方法
+        bos.close();
+
+        // lucene
+        String indexPath = "./resources/my/osdemo";
+        Directory directory = new TrackingDirectoryWrapper(FSDirectory.open(Paths.get(indexPath)));
+        IndexOutput indexOutput = directory.createOutput("file.txt", IOContext.DEFAULT);
+        indexOutput.writeBytes("Hello World".getBytes(StandardCharsets.UTF_8), 11);
+        indexOutput.close();    // indexOutput.os.flush()，只保证flush到操作系统缓存，不保证写到磁盘
+        directory.sync(Collections.singleton(indexOutput.getName()));  // sync 到磁盘，内部会调用FileChannel.force方法
+    }
 
     public static void main(String[] args) throws IOException {
         String[] rawDocs = new String[]{
