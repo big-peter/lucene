@@ -236,11 +236,14 @@ final class IndexingChain implements Accountable {
 
   Sorter.DocMap flush(SegmentWriteState state) throws IOException {
 
+    // 1. 处理index sort
     // NOTE: caller (DocumentsWriterPerThread) handles
     // aborting on any exception from this method
     Sorter.DocMap sortMap = maybeSortSegment(state);
+
     int maxDoc = state.segmentInfo.maxDoc();
     long t0 = System.nanoTime();
+    // 2. flush norm 数据
     writeNorms(state, sortMap);
     if (infoStream.isEnabled("IW")) {
       infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write norms");
@@ -254,18 +257,21 @@ final class IndexingChain implements Accountable {
             state.segmentSuffix);
 
     t0 = System.nanoTime();
+    // 3. flush docValue 数据
     writeDocValues(state, sortMap);
     if (infoStream.isEnabled("IW")) {
       infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write docValues");
     }
 
     t0 = System.nanoTime();
+    // 4. flush point 数据
     writePoints(state, sortMap);
     if (infoStream.isEnabled("IW")) {
       infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write points");
     }
 
     t0 = System.nanoTime();
+    // 5. flush knn 数据
     writeVectors(state, sortMap);
     if (infoStream.isEnabled("IW")) {
       infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write vectors");
@@ -273,6 +279,7 @@ final class IndexingChain implements Accountable {
 
     // it's possible all docs hit non-aborting exceptions...
     t0 = System.nanoTime();
+    // 6. flush stored field数据
     storedFieldsConsumer.finish(maxDoc);
     storedFieldsConsumer.flush(state, sortMap);
     if (infoStream.isEnabled("IW")) {
@@ -301,6 +308,7 @@ final class IndexingChain implements Accountable {
         // Use the merge instance in order to reuse the same IndexInput for all terms
         normsMergeInstance = norms.getMergeInstance();
       }
+      // 7. flush 倒排表数据
       termsHash.flush(fieldsToFlush, state, sortMap, normsMergeInstance);
     }
     if (infoStream.isEnabled("IW")) {
@@ -309,6 +317,7 @@ final class IndexingChain implements Accountable {
           ((System.nanoTime() - t0) / 1000000) + " msec to write postings and finish vectors");
     }
 
+    // 8. flush field数据
     // Important to save after asking consumer to flush so
     // consumer can alter the FieldInfo* if necessary.  EG,
     // FreqProxTermsWriter does this with
