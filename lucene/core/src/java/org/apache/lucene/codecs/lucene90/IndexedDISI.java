@@ -18,6 +18,8 @@ package org.apache.lucene.codecs.lucene90;
 
 import java.io.DataInput;
 import java.io.IOException;
+import java.util.Arrays;
+
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -107,6 +109,11 @@ public final class IndexedDISI extends DocIdSetIterator {
 
   static final int MAX_ARRAY_LENGTH = (1 << 12) - 1;
 
+  // 将block的信息flush。包括blockId，该block的文档数。还会写入下列数据
+  // 如果文档数少于4095，会写入short类型的文档id
+  // 如果文档数等于65536，不写任何数据
+  // 否则，写rank数据，再写docId的bitset数据。
+  // rank是文档个数的索引，每2^denseRankPower文档保存一次。
   private static void flush(
       int block, FixedBitSet buffer, int cardinality, byte denseRankPower, IndexOutput out)
       throws IOException {
@@ -136,6 +143,7 @@ public final class IndexedDISI extends DocIdSetIterator {
   // One rank-entry for every {@code 2^denseRankPower} bits, with each rank-entry using 2 bytes.
   // Represented as a byte[] for fast flushing and mirroring of the retrieval representation.
   private static byte[] createRank(FixedBitSet buffer, byte denseRankPower) {
+    // longsPerRank = docsPerRank / long_bits = 2^denseRankPower / 2^6 = 2^(denseRankPower-6) = 1 << (denseRankPower - 6)
     final int longsPerRank = 1 << (denseRankPower - 6);
     final int rankMark = longsPerRank - 1;
     final int rankIndexShift = denseRankPower - 7; // 6 for the long (2^6) + 1 for 2 bytes/entry
@@ -144,11 +152,38 @@ public final class IndexedDISI extends DocIdSetIterator {
     int bitCount = 0;
     for (int word = 0; word < DENSE_BLOCK_LONGS; word++) {
       if ((word & rankMark) == 0) { // Every longsPerRank longs
+        // bitCount表示当前遇到的文档个数
+        // bitCount大小不超过65536，下面两行代码是将bitCount写入到两个字节中。高8位 + 低8位
         rank[word >> rankIndexShift] = (byte) (bitCount >> 8);
         rank[(word >> rankIndexShift) + 1] = (byte) (bitCount & 0xFF);
       }
       bitCount += Long.bitCount(bits[word]);
     }
+    return rank;
+  }
+
+  // 没有位操作，为了阅读方便
+  private static byte[] createRankForRead(FixedBitSet buffer, byte denseRankPower) {
+    // 每个rank包含的文档数，用bitset表示的话即位数
+    int docsPerRank = 1 << denseRankPower;
+    // 每个rank包含的long个数
+    int longsPerRank = docsPerRank / 64;
+    // 每个rank需要占用2个字节，interval要除以2
+    int arrInterval = longsPerRank / 2;
+
+    byte[] rank = new byte[DENSE_BLOCK_LONGS / arrInterval];
+    long[] bits = buffer.getBits();
+    int bitCount = 0;
+    for (int word=0; word < DENSE_BLOCK_LONGS; word++) {
+      // 每longsPerRank处理一次，如果longsPerRank=64，则0, 64, 128, 192...
+      if (word % longsPerRank == 0) {
+        rank[word / arrInterval] = (byte) (bitCount >> 8);
+        rank[word / arrInterval + 1] = (byte) (bitCount & 0xFF);
+      }
+
+      bitCount += Long.bitCount(bits[word]);
+    }
+
     return rank;
   }
 
@@ -198,8 +233,8 @@ public final class IndexedDISI extends DocIdSetIterator {
               + (int) Math.pow(2, denseRankPower)
               + " docIDs)");
     }
-    int totalCardinality = 0;
-    int blockCardinality = 0;
+    int totalCardinality = 0; // 表示当前遇到了多少文档
+    int blockCardinality = 0;  // 表示在该block内遇到了多少文档
     final FixedBitSet buffer = new FixedBitSet(1 << 16);
     int[] jumps = new int[ArrayUtil.oversize(1, Integer.BYTES * 2)];
     int prevBlock = -1;
@@ -224,8 +259,10 @@ public final class IndexedDISI extends DocIdSetIterator {
         totalCardinality += blockCardinality;
         blockCardinality = 0;
       }
+
+      // 只取低16位的值。高16位的值由block决定
       buffer.set(doc & 0xFFFF);
-      blockCardinality++;
+      blockCardinality++; // 代表该block中doc数量
       prevBlock = block;
     }
     if (blockCardinality > 0) {
@@ -249,10 +286,14 @@ public final class IndexedDISI extends DocIdSetIterator {
         addJumps(jumps, out.getFilePointer() - origo, totalCardinality, lastBlock, lastBlock + 1);
     buffer.set(DocIdSetIterator.NO_MORE_DOCS & 0xFFFF);
     flush(DocIdSetIterator.NO_MORE_DOCS >>> 16, buffer, 1, denseRankPower, out);
+
+    // 保存jump索引数据。jump保存每个block开始的offset，以及之前所有block保存的doc个数
     // offset+index jump-table stored at the end
     return flushBlockJumps(jumps, lastBlock + 1, out);
   }
 
+  // 保存[startBlock, endBlock)范围内的block对应的offset和index。
+  // offset表示文件中对应的偏移量，index表示当前遇到的文档数
   // Adds entries to the offset & index jump-table for blocks
   private static int[] addJumps(int[] jumps, long offset, int index, int startBlock, int endBlock) {
     assert offset < Integer.MAX_VALUE
