@@ -105,6 +105,8 @@ public class MyIndex {
                 indexWriter.addDocument(document);
             }
 
+            indexWriter.flush();
+
             indexWriter.commit();
 
             System.out.println("wait...");
