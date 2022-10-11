@@ -369,6 +369,7 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
       singletonDocID = -1;
       // vInt encode the remaining doc deltas and freqs:
       for (int i = 0; i < docBufferUpto; i++) {
+        // 写入docDelta和freq
         final int docDelta = (int) docDeltaBuffer[i];
         final int freq = (int) freqBuffer[i];
         if (!writeFreqs) {
@@ -384,6 +385,7 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
 
     final long lastPosBlockOffset;
 
+    // 写入pos数据
     if (writePositions) {
       // totalTermFreq is just total number of positions(or payloads, or offsets)
       // associated with current term.

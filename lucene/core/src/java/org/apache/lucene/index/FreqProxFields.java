@@ -456,7 +456,7 @@ class FreqProxFields extends Fields {
         nextPosition();
       }
 
-      if (reader.eof()) {
+      if (reader.eof()) { // 有文档的docId和frequency还没写到bytePool
         if (ended) {
           return NO_MORE_DOCS;
         } else {

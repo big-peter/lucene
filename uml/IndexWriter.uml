@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>JAVA</ID>
+  <OriginalElement>org.apache.lucene.index.IndexWriter</OriginalElement>
+  <nodes>
+    <node x="69.0" y="-34.0">org.apache.lucene.index.IndexWriter</node>
+    <node x="208.0" y="-554.0">org.apache.lucene.index.DocumentsWriterPerThreadPool</node>
+    <node x="579.5" y="-434.0">org.apache.lucene.index.DocumentsWriterFlushQueue</node>
+    <node x="219.0" y="-954.0">org.apache.lucene.index.IndexingChain</node>
+    <node x="615.0" y="-954.0">org.apache.lucene.index.DocumentsWriterDeleteQueue</node>
+    <node x="265.0" y="-734.0">org.apache.lucene.index.DocumentsWriterPerThread</node>
+    <node x="116.0" y="-434.0">org.apache.lucene.index.DocumentsWriterFlushControl</node>
+    <node x="346.0" y="-214.0">org.apache.lucene.index.DocumentsWriter</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="org.apache.lucene.index.DocumentsWriter" target="org.apache.lucene.index.DocumentsWriterPerThread" relationship="CREATE">
+      <point x="14.461538461538453" y="-14.0" />
+      <point x="454.46153846153845" y="-360.0" />
+      <point x="540.0" y="-360.0" />
+      <point x="540.0" y="-580.0" />
+      <point x="460.0" y="-580.0" />
+      <point x="60.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterFlushQueue" target="org.apache.lucene.index.DocumentsWriterDeleteQueue" relationship="DEPENDENCY">
+      <point x="60.0" y="-14.0" />
+      <point x="20.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterPerThreadPool" target="org.apache.lucene.index.DocumentsWriterPerThread" relationship="TO_MANY">
+      <point x="40.0" y="-14.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriter" target="org.apache.lucene.index.DocumentsWriterFlushQueue" relationship="TO_ONE">
+      <point x="43.38461538461536" y="-14.0" />
+      <point x="483.38461538461536" y="-320.0" />
+      <point x="649.75" y="-320.0" />
+      <point x="-70.25" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriter" target="org.apache.lucene.index.DocumentsWriterFlushControl" relationship="CREATE">
+      <point x="-86.16666666666663" y="-14.0" />
+      <point x="93.83333333333337" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterPerThread" target="org.apache.lucene.index.DocumentsWriterDeleteQueue" relationship="DEPENDENCY">
+      <point x="54.0" y="-14.0" />
+      <point x="454.0" y="-800.0" />
+      <point x="706.6666666666667" y="-800.0" />
+      <point x="-53.33333333333326" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterDeleteQueue" target="org.apache.lucene.index.DocumentsWriterPerThread" relationship="DEPENDENCY">
+      <point x="-16.66666666666663" y="14.0" />
+      <point x="743.3333333333334" y="-780.0" />
+      <point x="508.0" y="-780.0" />
+      <point x="108.0" y="-14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriter" target="org.apache.lucene.index.DocumentsWriterDeleteQueue" relationship="TO_ONE">
+      <point x="86.76923076923072" y="-14.0" />
+      <point x="526.7692307692307" y="-260.0" />
+      <point x="900.0" y="-260.0" />
+      <point x="900.0" y="-740.0" />
+      <point x="890.0" y="-740.0" />
+      <point x="130.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.IndexWriter" target="org.apache.lucene.index.DocumentsWriter" relationship="CREATE">
+      <point x="49.14285714285717" y="-14.0" />
+      <point x="189.14285714285717" y="-100.0" />
+      <point x="487.0" y="-100.0" />
+      <point x="47.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterPerThread" target="org.apache.lucene.index.IndexingChain" relationship="CREATE">
+      <point x="-54.0" y="-14.0" />
+      <point x="46.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriter" target="org.apache.lucene.index.DocumentsWriterFlushQueue" relationship="CREATE">
+      <point x="57.84615384615381" y="-14.0" />
+      <point x="497.8461538461538" y="-300.0" />
+      <point x="790.25" y="-300.0" />
+      <point x="70.25" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.IndexingChain" target="org.apache.lucene.index.IndexWriter" relationship="DEPENDENCY">
+      <point x="-56.66666666666666" y="14.0" />
+      <point x="243.33333333333334" y="-860.0" />
+      <point x="0.0" y="-860.0" />
+      <point x="0.0" y="-80.0" />
+      <point x="72.66666666666667" y="-80.0" />
+      <point x="-67.33333333333333" y="-14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.IndexWriter" target="org.apache.lucene.index.DocumentsWriterPerThread" relationship="DEPENDENCY">
+      <point x="-60.0" y="-14.0" />
+      <point x="80.0" y="-640.0" />
+      <point x="280.0" y="-640.0" />
+      <point x="-120.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterPerThread" target="org.apache.lucene.index.IndexWriter" relationship="DEPENDENCY">
+      <point x="-90.0" y="14.0" />
+      <point x="310.0" y="-620.0" />
+      <point x="100.0" y="-620.0" />
+      <point x="-40.0" y="-14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterFlushControl" target="org.apache.lucene.index.DocumentsWriter" relationship="TO_ONE">
+      <point x="109.5" y="14.0" />
+      <point x="-70.5" y="-14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriter" target="org.apache.lucene.index.DocumentsWriterFlushControl" relationship="TO_ONE">
+      <point x="-39.166666666666686" y="-14.0" />
+      <point x="140.83333333333331" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterFlushControl" target="org.apache.lucene.index.DocumentsWriterPerThread" relationship="DEPENDENCY">
+      <point x="-80.0" y="-14.0" />
+      <point x="180.0" y="-580.0" />
+      <point x="370.0" y="-580.0" />
+      <point x="-30.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterPerThread" target="org.apache.lucene.index.DocumentsWriterDeleteQueue" relationship="TO_ONE">
+      <point x="0.0" y="-14.0" />
+      <point x="400.0" y="-820.0" />
+      <point x="670.0000000000001" y="-820.0" />
+      <point x="-89.99999999999989" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.IndexWriter" target="org.apache.lucene.index.DocumentsWriterFlushControl" relationship="DEPENDENCY">
+      <point x="0.0" y="-14.0" />
+      <point x="-120.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterFlushControl" target="org.apache.lucene.index.IndexWriter" relationship="DEPENDENCY">
+      <point x="-100.0" y="14.0" />
+      <point x="20.0" y="-14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriter" target="org.apache.lucene.index.DocumentsWriterPerThreadPool" relationship="CREATE">
+      <point x="-20.0" y="-14.0" />
+      <point x="60.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterFlushControl" target="org.apache.lucene.index.DocumentsWriterDeleteQueue" relationship="DEPENDENCY">
+      <point x="-136.0" y="-14.0" />
+      <point x="124.0" y="-480.0" />
+      <point x="40.0" y="-480.0" />
+      <point x="40.0" y="-840.0" />
+      <point x="633.3333333333335" y="-840.0" />
+      <point x="-126.66666666666652" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterFlushControl" target="org.apache.lucene.index.DocumentsWriterPerThread" relationship="TO_MANY">
+      <point x="-120.0" y="-14.0" />
+      <point x="140.0" y="-600.0" />
+      <point x="340.0" y="-600.0" />
+      <point x="-60.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.IndexWriter" target="org.apache.lucene.index.DocumentsWriterDeleteQueue" relationship="DEPENDENCY">
+      <point x="63.71428571428575" y="-14.0" />
+      <point x="203.71428571428575" y="-80.0" />
+      <point x="940.0" y="-80.0" />
+      <point x="940.0" y="-760.0" />
+      <point x="900.0" y="-760.0" />
+      <point x="140.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterPerThreadPool" target="org.apache.lucene.index.DocumentsWriterPerThread" relationship="DEPENDENCY">
+      <point x="70.0" y="-14.0" />
+      <point x="30.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterPerThread" target="org.apache.lucene.index.DocumentsWriter" relationship="DEPENDENCY">
+      <point x="90.0" y="14.0" />
+      <point x="490.0" y="-600.0" />
+      <point x="560.0" y="-600.0" />
+      <point x="560.0" y="-340.0" />
+      <point x="468.9230769230769" y="-340.0" />
+      <point x="28.923076923076906" y="-14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterPerThread" target="org.apache.lucene.index.IndexingChain" relationship="TO_ONE">
+      <point x="-108.0" y="-14.0" />
+      <point x="-8.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.IndexWriter" target="org.apache.lucene.index.DocumentsWriter" relationship="TO_ONE">
+      <point x="34.571428571428584" y="-14.0" />
+      <point x="174.57142857142858" y="-120.0" />
+      <point x="393.0" y="-120.0" />
+      <point x="-47.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterFlushControl" target="org.apache.lucene.index.DocumentsWriterPerThreadPool" relationship="DEPENDENCY">
+      <point x="115.19999999999999" y="-14.0" />
+      <point x="15.199999999999989" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriter" target="org.apache.lucene.index.DocumentsWriterDeleteQueue" relationship="CREATE">
+      <point x="72.30769230769226" y="-14.0" />
+      <point x="512.3076923076923" y="-280.0" />
+      <point x="880.0" y="-280.0" />
+      <point x="120.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterFlushControl" target="org.apache.lucene.index.DocumentsWriter" relationship="DEPENDENCY">
+      <point x="125.16666666666663" y="14.0" />
+      <point x="-54.83333333333337" y="-14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriter" target="org.apache.lucene.index.DocumentsWriterPerThreadPool" relationship="TO_ONE">
+      <point x="0.0" y="-14.0" />
+      <point x="80.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterFlushControl" target="org.apache.lucene.index.DocumentsWriterPerThreadPool" relationship="TO_ONE">
+      <point x="57.60000000000002" y="-14.0" />
+      <point x="-42.39999999999998" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterFlushQueue" target="org.apache.lucene.index.DocumentsWriterPerThread" relationship="DEPENDENCY">
+      <point x="-80.0" y="-14.0" />
+      <point x="640.0" y="-620.0" />
+      <point x="520.0" y="-620.0" />
+      <point x="120.0" y="14.0" />
+    </edge>
+  </edges>
+  <settings layout="Hierarchic Compact" zoom="0.6084710743801653" showDependencies="true" x="424.80475382003397" y="-581.0730050933787" />
+  <SelectedNodes />
+  <Categories />
+  <SCOPE>All</SCOPE>
+  <VISIBILITY>private</VISIBILITY>
+</Diagram>
+
