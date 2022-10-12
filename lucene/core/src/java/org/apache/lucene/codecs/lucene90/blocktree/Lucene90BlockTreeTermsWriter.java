@@ -713,7 +713,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
                 nextBlockStart,
                 end,
                 hasTerms,
-                hasSubBlocks));
+                hasSubBlocks));  // writeBlock写.tim文件
       }
 
       assert newBlocks.isEmpty() == false;
@@ -722,7 +722,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
       assert firstBlock.isFloor || newBlocks.size() == 1;
 
-      firstBlock.compileIndex(newBlocks, scratchBytes, scratchIntsRef);
+      firstBlock.compileIndex(newBlocks, scratchBytes, scratchIntsRef);  // fst相关
 
       // Remove slice from the top of the pending stack, that we just wrote:
       pending.subList(pending.size() - count, pending.size()).clear();
@@ -781,7 +781,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         // Last block:
         code |= 1;
       }
-      termsOut.writeVInt(code);
+      termsOut.writeVInt(code);  // termsOut，.tim文件输出流
 
       /*
       if (DEBUG) {
@@ -1021,14 +1021,14 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       }
       */
 
-      BlockTermState state = postingsWriter.writeTerm(text, termsEnum, docsSeen, norms);
+      BlockTermState state = postingsWriter.writeTerm(text, termsEnum, docsSeen, norms);  // 将docId,freq,pos,payload,offset信息写到.doc, .pos(包含offset数据), .pay文件中
       if (state != null) {
 
         assert state.docFreq != 0;
         assert fieldInfo.getIndexOptions() == IndexOptions.DOCS
                 || state.totalTermFreq >= state.docFreq
             : "postingsWriter=" + postingsWriter;
-        pushTerm(text);
+        pushTerm(text);  //
 
         PendingTerm term = new PendingTerm(text, state);
         pending.add(term);
@@ -1055,7 +1055,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
               lastTerm.length(),
               text.bytes,
               text.offset,
-              text.offset + text.length);
+              text.offset + text.length);  // 找到lastTerm和text第一个不同的byte的下标，即相同的前缀长度
       if (prefixLength == -1) { // Only happens for the first term, if it is empty
         assert lastTerm.length() == 0;
         prefixLength = 0;
@@ -1102,14 +1102,14 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         // we can save writing a "degenerate" root block, but we have to
         // fix all the places that assume the root block's prefix is the empty string:
         pushTerm(new BytesRef());
-        writeBlocks(0, pending.size());
+        writeBlocks(0, pending.size());  // 写.tim文件，fst处理
 
         // We better have one final "root" block:
         assert pending.size() == 1 && !pending.get(0).isTerm
             : "pending.size()=" + pending.size() + " pending=" + pending;
         final PendingBlock root = (PendingBlock) pending.get(0);
         assert root.prefix.length == 0;
-        final BytesRef rootCode = root.index.getEmptyOutput();
+        final BytesRef rootCode = root.index.getEmptyOutput();  // root.index类型是FST
         assert rootCode != null;
 
         ByteBuffersDataOutput metaOut = new ByteBuffersDataOutput();
@@ -1128,7 +1128,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         writeBytesRef(metaOut, new BytesRef(firstPendingTerm.termBytes));
         writeBytesRef(metaOut, new BytesRef(lastPendingTerm.termBytes));
         metaOut.writeVLong(indexOut.getFilePointer());
-        // Write FST to index
+        // Write FST to index。将FST写到index
         root.index.save(metaOut, indexOut);
         // System.out.println("  write FST " + indexStartFP + " field=" + fieldInfo.name);
 

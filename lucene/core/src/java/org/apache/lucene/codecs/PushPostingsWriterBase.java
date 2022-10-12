@@ -122,14 +122,14 @@ public abstract class PushPostingsWriterBase extends PostingsWriterBase {
     } else {
       normValues = norms.getNorms(fieldInfo);
     }
-    startTerm(normValues);
-    postingsEnum = termsEnum.postings(postingsEnum, enumFlags);
+    startTerm(normValues);  // 记录pos，offset，payload文件的offset
+    postingsEnum = termsEnum.postings(postingsEnum, enumFlags);  // 初始化读取bytePool的各种下标
     assert postingsEnum != null;
 
     int docFreq = 0;
     long totalTermFreq = 0;
     while (true) {
-      int docID = postingsEnum.nextDoc();
+      int docID = postingsEnum.nextDoc();  // 读取下一个包含该term的docId
       if (docID == PostingsEnum.NO_MORE_DOCS) {
         break;
       }
@@ -137,16 +137,16 @@ public abstract class PushPostingsWriterBase extends PostingsWriterBase {
       docsSeen.set(docID);
       int freq;
       if (writeFreqs) {
-        freq = postingsEnum.freq();
+        freq = postingsEnum.freq();  // 读取freq
         totalTermFreq += freq;
       } else {
         freq = -1;
       }
-      startDoc(docID, freq);
+      startDoc(docID, freq);  // 开始写docId文档的数据
 
-      if (writePositions) {
-        for (int i = 0; i < freq; i++) {
-          int pos = postingsEnum.nextPosition();
+      if (writePositions) {  // 需要写pos数据
+        for (int i = 0; i < freq; i++) {  // 该doc中term每次出现，都要记录pos数据
+          int pos = postingsEnum.nextPosition();  // 读取pos，以及payload，offset
           BytesRef payload = writePayloads ? postingsEnum.getPayload() : null;
           int startOffset;
           int endOffset;
@@ -157,11 +157,11 @@ public abstract class PushPostingsWriterBase extends PostingsWriterBase {
             startOffset = -1;
             endOffset = -1;
           }
-          addPosition(pos, payload, startOffset, endOffset);
+          addPosition(pos, payload, startOffset, endOffset);  // 将pos，payload，offset先写到内存数组
         }
       }
 
-      finishDoc();
+      finishDoc();  // 结束写doc信息，主要判断是否需要分块处理
     }
 
     if (docFreq == 0) {
@@ -170,7 +170,7 @@ public abstract class PushPostingsWriterBase extends PostingsWriterBase {
       BlockTermState state = newTermState();
       state.docFreq = docFreq;
       state.totalTermFreq = writeFreqs ? totalTermFreq : -1;
-      finishTerm(state);
+      finishTerm(state);  // 结束写term信息。将之前保存在内存数组中的数据写入到文件中。
       return state;
     }
   }

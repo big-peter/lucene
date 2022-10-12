@@ -231,7 +231,7 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
           "docs out of order (" + docID + " <= " + lastDocID + " )", docOut);
     }
 
-    docDeltaBuffer[docBufferUpto] = docDelta;
+    docDeltaBuffer[docBufferUpto] = docDelta;  // 将docDelta，freqDelta保存到内存数组中
     if (writeFreqs) {
       freqBuffer[docBufferUpto] = termDocFreq;
     }
@@ -287,7 +287,7 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
     if (position < 0) {
       throw new CorruptIndexException("position=" + position + " is < 0", docOut);
     }
-    posDeltaBuffer[posBufferUpto] = position - lastPosition;
+    posDeltaBuffer[posBufferUpto] = position - lastPosition;  // 将pos，payload,offset先保存到内存数组中
     if (writePayloads) {
       if (payload == null || payload.length == 0) {
         // no payload

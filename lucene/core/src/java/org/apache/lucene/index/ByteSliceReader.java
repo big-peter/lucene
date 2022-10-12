@@ -70,7 +70,7 @@ final class ByteSliceReader extends DataInput {
   public byte readByte() {
     assert !eof();
     assert upto <= limit;
-    if (upto == limit) nextSlice();
+    if (upto == limit) nextSlice();  // limit表示当前slice结束的下标
     return buffer[upto++];
   }
 
@@ -121,7 +121,7 @@ final class ByteSliceReader extends DataInput {
   public void readBytes(byte[] b, int offset, int len) {
     while (len > 0) {
       final int numLeft = limit - upto;
-      if (numLeft < len) {
+      if (numLeft < len) {  // 跨了多个slice
         // Read entire slice
         System.arraycopy(buffer, upto, b, offset, numLeft);
         offset += numLeft;

@@ -222,7 +222,7 @@ class FreqProxFields extends Fields {
 
     @Override
     public PostingsEnum postings(PostingsEnum reuse, int flags) {
-      if (PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS)) {
+      if (PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS)) {  // 如果需要保存position信息
         FreqProxPostingsEnum posEnum;
 
         if (!terms.hasProx) {
@@ -430,8 +430,8 @@ class FreqProxFields extends Fields {
 
     public void reset(int termID) {
       this.termID = termID;
-      terms.initReader(reader, termID, 0);
-      terms.initReader(posReader, termID, 1);
+      terms.initReader(reader, termID, 0);  // 更新docId，freq读取下标
+      terms.initReader(posReader, termID, 1);  // 更新pos，payload，offset读取下标
       ended = false;
       docID = -1;
       posLeft = 0;
@@ -456,7 +456,7 @@ class FreqProxFields extends Fields {
         nextPosition();
       }
 
-      if (reader.eof()) { // 有文档的docId和frequency还没写到bytePool
+      if (reader.eof()) { // 有文档的docId和frequency还没写到bytePool，保存在postingsArray.lastDocIds和termFreqs中
         if (ended) {
           return NO_MORE_DOCS;
         } else {
@@ -495,22 +495,22 @@ class FreqProxFields extends Fields {
     @Override
     public int nextPosition() throws IOException {
       assert posLeft > 0;
-      posLeft--;
-      int code = posReader.readVInt();
+      posLeft--;  // posLeft表示还有几次term的出现的信息要读取
+      int code = posReader.readVInt();  // 获取该次出现的posCode
       pos += code >>> 1;
-      if ((code & 1) != 0) {
+      if ((code & 1) != 0) {  // 需要写payload
         hasPayload = true;
         // has a payload
-        payload.setLength(posReader.readVInt());
+        payload.setLength(posReader.readVInt());  // 获取payload长度
         payload.grow(payload.length());
-        posReader.readBytes(payload.bytes(), 0, payload.length());
+        posReader.readBytes(payload.bytes(), 0, payload.length());  // 读取payload内容，写入到payload中
       } else {
         hasPayload = false;
       }
 
       if (readOffsets) {
-        startOffset += posReader.readVInt();
-        endOffset = startOffset + posReader.readVInt();
+        startOffset += posReader.readVInt();  // 读取开始offset。position是对token而言，而offset是对字符而言
+        endOffset = startOffset + posReader.readVInt();  // endOffset = startOffset + len
       }
 
       return pos;
