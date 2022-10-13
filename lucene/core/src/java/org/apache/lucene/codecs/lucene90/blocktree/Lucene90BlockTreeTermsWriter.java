@@ -1028,7 +1028,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         assert fieldInfo.getIndexOptions() == IndexOptions.DOCS
                 || state.totalTermFreq >= state.docFreq
             : "postingsWriter=" + postingsWriter;
-        pushTerm(text);  //
+        pushTerm(text);  // TODO wj
 
         PendingTerm term = new PendingTerm(text, state);
         pending.add(term);
