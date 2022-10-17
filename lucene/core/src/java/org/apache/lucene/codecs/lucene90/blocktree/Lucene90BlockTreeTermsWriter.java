@@ -367,7 +367,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         termsWriter.write(term, termsEnum, norms);
       }
 
-      termsWriter.finish();
+      termsWriter.finish();  // 写入该field中的所有词项信息，直接写.tim,.tip文件，将tmd文件的信息保存在termsWriter的fields列表中，close的时候会写入.tmd文件
 
       // if (DEBUG) System.out.println("\nBTTW.write done seg=" + segment + " field=" + field);
     }
@@ -501,11 +501,11 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       // indexBuilder.DEBUG = false;
       final byte[] bytes = scratchBytes.toArrayCopy();
       assert bytes.length > 0;
-      fstCompiler.add(Util.toIntsRef(prefix, scratchIntsRef), new BytesRef(bytes, 0, bytes.length));
+      fstCompiler.add(Util.toIntsRef(prefix, scratchIntsRef), new BytesRef(bytes, 0, bytes.length));  // 添加映射 prefix -> [fp, hasTerms, isFloor]
       scratchBytes.reset();
 
       // Copy over index for all sub-blocks
-      for (PendingBlock block : blocks) {
+      for (PendingBlock block : blocks) {  // 如果block有子切片，添加block的子切片
         if (block.subIndices != null) {
           for (FST<BytesRef> subIndex : block.subIndices) {
             append(fstCompiler, subIndex, scratchIntsRef);
@@ -514,7 +514,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         }
       }
 
-      index = fstCompiler.compile();
+      index = fstCompiler.compile();  // FST构造完成
 
       assert subIndices == null;
 
@@ -652,7 +652,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
                 : "i=" + i + " lastSuffixLeadLabel=" + lastSuffixLeadLabel;
             suffixLeadLabel = -1;
           } else {
-            suffixLeadLabel = term.termBytes[prefixLength] & 0xff;
+            suffixLeadLabel = term.termBytes[prefixLength] & 0xff;  // 拿到后缀开始的字节
           }
         } else {
           PendingBlock block = (PendingBlock) ent;
@@ -702,7 +702,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       }
 
       // Write last block, if any:
-      if (nextBlockStart < end) {
+      if (nextBlockStart < end) {  // 写入最后剩余的数据
         int itemsInBlock = end - nextBlockStart;
         boolean isFloor = itemsInBlock < count;
         newBlocks.add(
@@ -713,7 +713,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
                 nextBlockStart,
                 end,
                 hasTerms,
-                hasSubBlocks));  // writeBlock写.tim文件
+                hasSubBlocks));  // 将后缀信息写入.tim文件，包括：后缀长度，后缀内容，文档频率，词频，.doc,.pay,.pos文件的偏移量
       }
 
       assert newBlocks.isEmpty() == false;
@@ -722,7 +722,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
       assert firstBlock.isFloor || newBlocks.size() == 1;
 
-      firstBlock.compileIndex(newBlocks, scratchBytes, scratchIntsRef);  // fst相关
+      firstBlock.compileIndex(newBlocks, scratchBytes, scratchIntsRef);  // 构建该block的FST
 
       // Remove slice from the top of the pending stack, that we just wrote:
       pending.subList(pending.size() - count, pending.size()).clear();
@@ -861,11 +861,11 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
             // it's a prefix term.  Terms cannot be larger than ~32 KB
             // so we won't run out of bits:
 
-            suffixLengthsWriter.writeVInt(suffix << 1);
-            suffixWriter.append(term.termBytes, prefixLength, suffix);
+            suffixLengthsWriter.writeVInt(suffix << 1);  // 保存后缀长度
+            suffixWriter.append(term.termBytes, prefixLength, suffix);  // 保存后缀内容
 
             // Write term stats, to separate byte[] blob:
-            statsWriter.add(state.docFreq, state.totalTermFreq);
+            statsWriter.add(state.docFreq, state.totalTermFreq);  // 内存中保存文档频率，词频信息。如果只出现一次即文档频率，词频都为1，则特殊处理
 
             // TODO: now that terms dict "sees" these longs,
             // we can explore better column-stride encodings
@@ -876,7 +876,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
             // separate anymore:
 
             // Write term meta data
-            postingsWriter.encodeTerm(metaWriter, fieldInfo, state, absolute);
+            postingsWriter.encodeTerm(metaWriter, fieldInfo, state, absolute);  // 将.doc, .pay, .pos文件的偏移量信息写入到metaWriter内存中
             absolute = false;
           } else {
             PendingBlock block = (PendingBlock) ent;
@@ -1035,7 +1035,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         // if (DEBUG) System.out.println("    add pending term = " + text + " pending.size()=" +
         // pending.size());
 
-        sumDocFreq += state.docFreq;
+        sumDocFreq += state.docFreq;  // 统计文档频率和总词频
         sumTotalTermFreq += state.totalTermFreq;
         numTerms++;
         if (firstPendingTerm == null) {
@@ -1113,9 +1113,9 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         assert rootCode != null;
 
         ByteBuffersDataOutput metaOut = new ByteBuffersDataOutput();
-        fields.add(metaOut);
+        fields.add(metaOut);  // 将信息保存到fields中，后续会写到.tmd文件
 
-        metaOut.writeVInt(fieldInfo.number);
+        metaOut.writeVInt(fieldInfo.number);  // 内存中保存tip的信息：字段序号，词项个数，FST的rootCode信息，总词项频率，总文档频率，总文档数，第一个词项和最后一个词项内容
         metaOut.writeVLong(numTerms);
         metaOut.writeVInt(rootCode.length);
         metaOut.writeBytes(rootCode.bytes, rootCode.offset, rootCode.length);
@@ -1128,8 +1128,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         writeBytesRef(metaOut, new BytesRef(firstPendingTerm.termBytes));
         writeBytesRef(metaOut, new BytesRef(lastPendingTerm.termBytes));
         metaOut.writeVLong(indexOut.getFilePointer());
-        // Write FST to index。将FST写到index
-        root.index.save(metaOut, indexOut);
+        // Write FST to index
+        root.index.save(metaOut, indexOut);  // 将tip信息写入到.tip文件
         // System.out.println("  write FST " + indexStartFP + " field=" + fieldInfo.name);
 
         /*
@@ -1183,7 +1183,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       success = true;
     } finally {
       if (success) {
-        IOUtils.close(metaOut, termsOut, indexOut, postingsWriter);
+        IOUtils.close(metaOut, termsOut, indexOut, postingsWriter); // write到文件
       } else {
         IOUtils.closeWhileHandlingException(metaOut, termsOut, indexOut, postingsWriter);
       }

@@ -222,7 +222,7 @@ class FreqProxFields extends Fields {
 
     @Override
     public PostingsEnum postings(PostingsEnum reuse, int flags) {
-      if (PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS)) {  // 如果需要保存position信息
+      if (PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS)) {  // 如果只需要保存position信息
         FreqProxPostingsEnum posEnum;
 
         if (!terms.hasProx) {
