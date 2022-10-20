@@ -352,6 +352,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         continue;
       }
 
+      // 将该Field的所有term的信息依次写入.doc, .pos, .pay文件
       TermsEnum termsEnum = terms.iterator();
       TermsWriter termsWriter = new TermsWriter(fieldInfos.fieldInfo(field));
       while (true) {
@@ -581,6 +582,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     }
   }
 
+  // 每个Field一个TermsWriter对象
   class TermsWriter {
     private final FieldInfo fieldInfo;
     private long numTerms;
@@ -608,6 +610,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     private PendingTerm firstPendingTerm;
     private PendingTerm lastPendingTerm;
 
+    // 生成NodeBlock。可能会生成多个PendingBlock
     /** Writes the top count entries in pending, using prevTerm to compute the prefix. */
     void writeBlocks(int prefixLength, int count) throws IOException {
 
@@ -636,6 +639,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       int nextBlockStart = start;
       int nextFloorLeadLabel = -1;
 
+      // 生成PendingBlock
       for (int i = start; i < end; i++) {
 
         PendingEntry ent = pending.get(i);
@@ -674,7 +678,9 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
             // block as soon as we have at least minItemsInBlock.  This is not always best: it often
             // produces
             // a too-small block as the final block:
+            // 太多了，划分成多个floor block
             boolean isFloor = itemsInBlock < count;
+            // 合并成PendingBlock，写.tim文件，并将合并的block加入newBlocks列表
             newBlocks.add(
                 writeBlock(
                     prefixLength,
@@ -713,7 +719,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
                 nextBlockStart,
                 end,
                 hasTerms,
-                hasSubBlocks));  // 将后缀信息写入.tim文件，包括：后缀长度，后缀内容，文档频率，词频，.doc,.pay,.pos文件的偏移量
+                hasSubBlocks));
       }
 
       assert newBlocks.isEmpty() == false;
@@ -722,11 +728,14 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
       assert firstBlock.isFloor || newBlocks.size() == 1;
 
+      // TODO wj curr
       firstBlock.compileIndex(newBlocks, scratchBytes, scratchIntsRef);  // 构建该block的FST
 
+      // 将已合并的PendingEntry从pending stack中移除
       // Remove slice from the top of the pending stack, that we just wrote:
       pending.subList(pending.size() - count, pending.size()).clear();
 
+      // 将创建的block加入pending stack
       // Append new block
       pending.add(firstBlock);
 
@@ -743,6 +752,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       return true;
     }
 
+    // 写.tim文件
     /**
      * Writes the specified slice (start is inclusive, end is exclusive) from pending stack as a new
      * block. If isFloor is true, there were too many (more than maxItemsInBlock) entries sharing
@@ -781,6 +791,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         // Last block:
         code |= 1;
       }
+
+      // numEntriesCode
       termsOut.writeVInt(code);  // termsOut，.tim文件输出流
 
       /*
@@ -802,9 +814,14 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
       boolean absolute = true;
 
+      // 1. 先将整合的数据保存在内存中
       if (isLeafBlock) {
         // Block contains only ordinary terms:
+        // 只包含PendingTerm
         subIndices = null;
+
+        // 用来写docFreq，totalTermFreq
+        // statsWriter类型是ByteBuffersDataOutput
         StatsWriter statsWriter =
             new StatsWriter(this.statsWriter, fieldInfo.getIndexOptions() != IndexOptions.DOCS);
         for (int i = start; i < end; i++) {
@@ -815,7 +832,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
           assert StringHelper.startsWith(term.termBytes, prefix) : term + " prefix=" + prefix;
           BlockTermState state = term.state;
-          final int suffix = term.termBytes.length - prefixLength;
+          final int suffix = term.termBytes.length - prefixLength;  // 后缀长度
           // if (DEBUG2) {
           //  BytesRef suffixBytes = new BytesRef(suffix);
           //  System.arraycopy(term.termBytes, prefixLength, suffixBytes.bytes, 0, suffix);
@@ -824,7 +841,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
           // }
 
           // For leaf block we write suffix straight
-          suffixLengthsWriter.writeVInt(suffix);
+          suffixLengthsWriter.writeVInt(suffix);  // ByteBuffersDataOutput，常见TermsWriter对象时创建
           suffixWriter.append(term.termBytes, prefixLength, suffix);
           assert floorLeadLabel == -1 || (term.termBytes[prefixLength] & 0xff) >= floorLeadLabel;
 
@@ -832,11 +849,15 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
           statsWriter.add(state.docFreq, state.totalTermFreq);
 
           // Write term meta data
+          // metaWriter类型是ByteBuffersDataOutput
           postingsWriter.encodeTerm(metaWriter, fieldInfo, state, absolute);
           absolute = false;
         }
+
+        // 如果singletonCount大于0，写入this.statsWriter
         statsWriter.finish();
       } else {
+        // 至少有一个PendingBlock
         // Block has at least one prefix term or a sub block:
         subIndices = new ArrayList<>();
         StatsWriter statsWriter =
@@ -844,6 +865,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         for (int i = start; i < end; i++) {
           PendingEntry ent = pending.get(i);
           if (ent.isTerm) {
+            // 如果是PendingTerm，处理逻辑和上面一样
             PendingTerm term = (PendingTerm) ent;
 
             assert StringHelper.startsWith(term.termBytes, prefix) : term + " prefix=" + prefix;
@@ -879,6 +901,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
             postingsWriter.encodeTerm(metaWriter, fieldInfo, state, absolute);  // 将.doc, .pay, .pos文件的偏移量信息写入到metaWriter内存中
             absolute = false;
           } else {
+            // 如果是PendingBlock
             PendingBlock block = (PendingBlock) ent;
             assert StringHelper.startsWith(block.prefix, prefix);
             final int suffix = block.prefix.length - prefixLength;
@@ -907,7 +930,9 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
                     + (block.prefix.bytes[prefixLength] & 0xff);
             assert block.fp < startFP;
 
+            // startFP delta
             suffixLengthsWriter.writeVLong(startFP - block.fp);
+            // 添加block.index
             subIndices.add(block.index);
           }
         }
@@ -916,6 +941,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         assert subIndices.size() != 0;
       }
 
+      // 2. 压缩
       // Write suffixes byte[] blob to terms dict output, either uncompressed, compressed with LZ4
       // or with LowercaseAsciiCompression.
       CompressionAlgorithm compressionAlg = CompressionAlgorithm.NO_COMPRESSION;
@@ -953,12 +979,17 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
           }
         }
       }
+
+      // 3. 开始写.tim文件
+      // 3.1 写token：suffixLength, isLeafBlock, compressionAlg
       long token = ((long) suffixWriter.length()) << 3;
       if (isLeafBlock) {
         token |= 0x04;
       }
       token |= compressionAlg.code;
       termsOut.writeVLong(token);
+
+      // 3.2 写suffix数据
       if (compressionAlg == CompressionAlgorithm.NO_COMPRESSION) {
         termsOut.writeBytes(suffixWriter.bytes(), suffixWriter.length());
       } else {
@@ -967,6 +998,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       suffixWriter.setLength(0);
       spareWriter.reset();
 
+      // 3.3 写suffixLength数据
       // Write suffix lengths
       final int numSuffixBytes = Math.toIntExact(suffixLengthsWriter.size());
       spareBytes = ArrayUtil.growNoCopy(spareBytes, numSuffixBytes);
@@ -981,12 +1013,14 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         termsOut.writeBytes(spareBytes, numSuffixBytes);
       }
 
+      // 3.4 写stats数据：docFrq，totalTermFreq
       // Stats
       final int numStatsBytes = Math.toIntExact(statsWriter.size());
       termsOut.writeVInt(numStatsBytes);
       statsWriter.copyTo(termsOut);
       statsWriter.reset();
 
+      // 3.5 写termMeta数据：docStartFP，posStartFP，payStartFP，lastPosBlockOffset, skipOffset
       // Write term meta data byte[] blob
       termsOut.writeVInt((int) metaWriter.size());
       metaWriter.copyTo(termsOut);
@@ -1021,7 +1055,21 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       }
       */
 
-      BlockTermState state = postingsWriter.writeTerm(text, termsEnum, docsSeen, norms);  // 将docId,freq,pos,payload,offset信息写到.doc, .pos(包含offset数据), .pay文件中
+      // 将docId,freq,pos,payload,offset信息写到.doc, .pos(包含offset数据), .pay文件中
+      BlockTermState state = postingsWriter.writeTerm(text, termsEnum, docsSeen, norms);
+
+      /*
+      state包含的信息如下：
+        singletonDocID：该值如果不为-1，说明只有一篇文档包含当前term，那么singletonDocID的值为对应的文档号，singletonDocID的存在会影响索引文件的数据结构，在生成InnerNode流程点会介绍该值的影响
+        lastPosBlockOffset：如果该值为-1，说明term在所有文档中的词频没有达到128，即没有生成一个block，如果至少存在一个block，那么该值描述的是VIntBlocks在索引文件.pos中的起始位置
+        docStartFP：当前term的文档号docId、词频信息frequency在索引文件.doc的起始位置
+        posStartFP：当前term的位置信息position在索引文件.pos的起始位置
+        payStartFP：当前term的偏移位置offset，payload在索引文件.pay的起始位置
+        skipOffset：当前term的跳表信息在索引文件.doc的起始位置
+
+        docFreq：包含当前term的文档数量
+        totalTermFreq：当前term在所有文档中出现的词频和值
+       */
       if (state != null) {
 
         assert state.docFreq != 0;
@@ -1031,6 +1079,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         pushTerm(text);  // TODO wj
 
         PendingTerm term = new PendingTerm(text, state);
+
+        // pending即存放term的栈。pending栈中存放两种类型元素：PendingTerm，PendingBlock
         pending.add(term);
         // if (DEBUG) System.out.println("    add pending term = " + text + " pending.size()=" +
         // pending.size());
@@ -1066,12 +1116,18 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       // Close the "abandoned" suffix now:
       for (int i = lastTerm.length() - 1; i >= prefixLength; i--) {
 
+        // 统计term栈中的prefixTopSize
+        // term栈即存放term的栈，prefixTopSize是跟栈顶term有相同前缀的term数量
+        // pending.size即栈的大小，prefixStarts[i]表示第以lastTerm[0:i]为前缀的词在pending中最下面的下标
+        // pending.size() - prefixStarts[i]即表示以lastTerm[0:i]为前缀的词的个数
         // How many items on top of the stack share the current suffix
         // we are closing:
         int prefixTopSize = pending.size() - prefixStarts[i];
         if (prefixTopSize >= minItemsInBlock) {
           // if (DEBUG) System.out.println("pushTerm i=" + i + " prefixTopSize=" + prefixTopSize + "
           // minItemsInBlock=" + minItemsInBlock);
+          // 具有相同前缀的term个数达到阈值，生成NodeBlock
+          // 注意：在该循环中，可能会调用多次writeBlocks
           writeBlocks(i + 1, prefixTopSize);
           prefixStarts[i] -= prefixTopSize - 1;
         }
@@ -1151,11 +1207,11 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     }
 
     private final ByteBuffersDataOutput suffixLengthsWriter =
-        ByteBuffersDataOutput.newResettableInstance();
-    private final BytesRefBuilder suffixWriter = new BytesRefBuilder();
-    private final ByteBuffersDataOutput statsWriter = ByteBuffersDataOutput.newResettableInstance();
-    private final ByteBuffersDataOutput metaWriter = ByteBuffersDataOutput.newResettableInstance();
-    private final ByteBuffersDataOutput spareWriter = ByteBuffersDataOutput.newResettableInstance();
+        ByteBuffersDataOutput.newResettableInstance();  // 用来内存中保存suffix len
+    private final BytesRefBuilder suffixWriter = new BytesRefBuilder(); // 用来内存中保存suffix
+    private final ByteBuffersDataOutput statsWriter = ByteBuffersDataOutput.newResettableInstance(); // 用来保存docFrq，totalTermFreq
+    private final ByteBuffersDataOutput metaWriter = ByteBuffersDataOutput.newResettableInstance();  // 用来保存docStartFP，posStartFP，payStartFP，lastPosBlockOffset，skipOffset
+    private final ByteBuffersDataOutput spareWriter = ByteBuffersDataOutput.newResettableInstance(); // 用来保存压缩后的数据
     private byte[] spareBytes = BytesRef.EMPTY_BYTES;
     private LZ4.HighCompressionHashTable compressionHashTable;
   }

@@ -61,19 +61,20 @@ public abstract class MultiLevelSkipListWriter {
   private final int skipMultiplier;
 
   /** for every skip level a different buffer is used */
-  private ByteBuffersDataOutput[] skipBuffer;
+  private ByteBuffersDataOutput[] skipBuffer;  // 存放每一层的数据。每个元素在.doc文件中对应为一个skipLevel字段
 
   /** Creates a {@code MultiLevelSkipListWriter}. */
   protected MultiLevelSkipListWriter(
       int skipInterval, int skipMultiplier, int maxSkipLevels, int df) {
-    this.skipInterval = skipInterval;
-    this.skipMultiplier = skipMultiplier;
+    this.skipInterval = skipInterval;  // skipInterval when level == 0
+    this.skipMultiplier = skipMultiplier;  // skipInterval when level > 0
 
     int numberOfSkipLevels;
     // calculate the maximum number of skip levels for this document frequency
     if (df <= skipInterval) {
       numberOfSkipLevels = 1;
     } else {
+      // 计算层数，类比计算二叉树的高度
       numberOfSkipLevels = 1 + MathUtil.log(df / skipInterval, skipMultiplier);
     }
 
@@ -129,6 +130,8 @@ public abstract class MultiLevelSkipListWriter {
   public void bufferSkip(int df) throws IOException {
 
     assert df % skipInterval == 0;
+
+    // 计算该block需要写入SkipDatum信息的层数
     int numLevels = 1;
     df /= skipInterval;
 
@@ -141,11 +144,13 @@ public abstract class MultiLevelSkipListWriter {
     long childPointer = 0;
 
     for (int level = 0; level < numLevels; level++) {
+      // 写入层level的skipData
       writeSkipData(level, skipBuffer[level]);
 
       long newChildPointer = skipBuffer[level].size();
 
       if (level != 0) {
+        // 写入指向下一层的信息
         // store child pointers for all levels except the lowest
         writeChildPointer(childPointer, skipBuffer[level]);
       }
@@ -195,6 +200,7 @@ public abstract class MultiLevelSkipListWriter {
    * @param skipBuffer the skip buffer to write to
    */
   protected void writeChildPointer(long childPointer, DataOutput skipBuffer) throws IOException {
+    // childPointer
     skipBuffer.writeVLong(childPointer);
   }
 }

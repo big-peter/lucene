@@ -112,6 +112,7 @@ public abstract class PushPostingsWriterBase extends PostingsWriterBase {
     }
   }
 
+  // 该方法用来写将term的信息写入.doc,.pos,.pay文件
   @Override
   public final BlockTermState writeTerm(
       BytesRef term, TermsEnum termsEnum, FixedBitSet docsSeen, NormsProducer norms)
@@ -164,9 +165,13 @@ public abstract class PushPostingsWriterBase extends PostingsWriterBase {
       finishDoc();  // 结束写doc信息，主要判断是否需要分块处理
     }
 
+    // 包含该term的所有文档都处理完了，执行收尾工作
     if (docFreq == 0) {
       return null;
     } else {
+      // 如果文档数或pos数不是128的倍数，会有一些数据无法生成Block
+      // 对于docDeltaBuffer、freqBuffer数组中的信息，将会被存储到索引文件.doc的VIntBlocks中
+      // 对于posDeltaBuffer、payloadLengthBuffer、payloadBytes、offsetStartDeltaBuffer、offsetLengthBuffer数组中的信息，将会被存储到索引文件.pos的VIntBlocks中
       BlockTermState state = newTermState();
       state.docFreq = docFreq;
       state.totalTermFreq = writeFreqs ? totalTermFreq : -1;

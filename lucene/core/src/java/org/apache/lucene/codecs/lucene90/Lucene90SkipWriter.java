@@ -164,7 +164,10 @@ final class Lucene90SkipWriter extends MultiLevelSkipListWriter {
       int posBufferUpto,
       int payloadByteUpto)
       throws IOException {
+
+    // 初始化
     initSkip();
+
     this.curDoc = doc;
     this.curDocPointer = docOut.getFilePointer();
     this.curPosPointer = posFP;
@@ -182,23 +185,30 @@ final class Lucene90SkipWriter extends MultiLevelSkipListWriter {
 
     int delta = curDoc - lastSkipDoc[level];
 
+    // docSkip，差值存储
     skipBuffer.writeVInt(delta);
     lastSkipDoc[level] = curDoc;
 
+    // docFPSkip
     skipBuffer.writeVLong(curDocPointer - lastSkipDocPointer[level]);
     lastSkipDocPointer[level] = curDocPointer;
 
     if (fieldHasPositions) {
 
+      // posFPSkip
       skipBuffer.writeVLong(curPosPointer - lastSkipPosPointer[level]);
       lastSkipPosPointer[level] = curPosPointer;
+
+      // posBlockOffset
       skipBuffer.writeVInt(curPosBufferUpto);
 
       if (fieldHasPayloads) {
+        // payLength
         skipBuffer.writeVInt(curPayloadByteUpto);
       }
 
       if (fieldHasOffsets || fieldHasPayloads) {
+        // payFPSkip
         skipBuffer.writeVLong(curPayPointer - lastSkipPayPointer[level]);
         lastSkipPayPointer[level] = curPayPointer;
       }
@@ -209,7 +219,9 @@ final class Lucene90SkipWriter extends MultiLevelSkipListWriter {
     if (level + 1 < numberOfSkipLevels) {
       curCompetitiveFreqNorms[level + 1].addAll(competitiveFreqNorms);
     }
+
     writeImpacts(competitiveFreqNorms, freqNormOut);
+
     skipBuffer.writeVInt(Math.toIntExact(freqNormOut.size()));
     freqNormOut.copyTo(skipBuffer);
     freqNormOut.reset();

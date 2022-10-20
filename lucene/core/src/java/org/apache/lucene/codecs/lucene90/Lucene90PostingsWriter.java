@@ -213,6 +213,8 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
     // Should write skip data as well as postings list for
     // current block.
     if (lastBlockDocID != -1 && docBufferUpto == 0) {
+      // 刚刚.doc写入了一个Block，需要写入skipList数据
+      // 将SkipData保存到内存数组中。注意参数是在finishDoc中记录的上一个block中的信息
       skipWriter.bufferSkip(
           lastBlockDocID,
           competitiveFreqNormAccumulator,
@@ -240,6 +242,8 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
     docCount++;
 
     if (docBufferUpto == BLOCK_SIZE) {
+      // buffer中的元素个数达到128个，生成PackedBlock写入.doc文件。packedBlock === [PackedDocDeltaBlock | PackedFreqBlock]
+      // PackedBlock及将buffer中的数据经过PackedInts压缩处理。
       pforUtil.encode(docDeltaBuffer, docOut);
       if (writeFreqs) {
         pforUtil.encode(freqBuffer, docOut);
@@ -287,7 +291,10 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
     if (position < 0) {
       throw new CorruptIndexException("position=" + position + " is < 0", docOut);
     }
-    posDeltaBuffer[posBufferUpto] = position - lastPosition;  // 将pos，payload,offset先保存到内存数组中
+
+    // 将pos，payload,offset先保存到内存数组中
+    // pos，offset有序，差值存储
+    posDeltaBuffer[posBufferUpto] = position - lastPosition;
     if (writePayloads) {
       if (payload == null || payload.length == 0) {
         // no payload
@@ -314,16 +321,27 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
     posBufferUpto++;
     lastPosition = position;
     if (posBufferUpto == BLOCK_SIZE) {
+      // 处理了128个pos信息，压缩成Block存储
+
+      // 生成PackedPosBlock写入到.pos文件
       pforUtil.encode(posDeltaBuffer, posOut);
 
       if (writePayloads) {
+        // 生成PackedPayBlock写入到.pay文件
+        // 先生成PackedPayLengthBlock,写入.pay文件
         pforUtil.encode(payloadLengthBuffer, payOut);
+        // 将payLoadByteUpto写入.pay文件，即当前block中paydata的大小
         payOut.writeVInt(payloadByteUpto);
+        // 将payloadBytes写入.pay文件
         payOut.writeBytes(payloadBytes, 0, payloadByteUpto);
         payloadByteUpto = 0;
       }
+
+
       if (writeOffsets) {
+        // 生成PackedOffsetStartDeltaBlock写入到.pay文件
         pforUtil.encode(offsetStartDeltaBuffer, payOut);
+        // 生成PackedOffsetLengthBlock写入到.pay文件
         pforUtil.encode(offsetLengthBuffer, payOut);
       }
       posBufferUpto = 0;
@@ -336,13 +354,23 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
     // those skip data for each block, and when a new doc comes,
     // write them to skip file.
     if (docBufferUpto == BLOCK_SIZE) {
+      // 如果包含当前term的文档数达到128， 记录下列信息。这些信息用来生成跳表SkipList的
+
+      // 刚刚处理完的文档号
       lastBlockDocID = lastDocID;
+
       if (posOut != null) {
         if (payOut != null) {
+          // .pay文件的FilePointer
           lastBlockPayFP = payOut.getFilePointer();
         }
+        // .pos文件的FilePointer
         lastBlockPosFP = posOut.getFilePointer();
+
+        // 在posDeltaBuffer、payloadLengthBuffer、offsetStartDeltaBuffer、offsetLengthBuffer数组中的数组下标值
         lastBlockPosBufferUpto = posBufferUpto;
+
+        // 在payloadBytes数组中的数组下标值
         lastBlockPayloadByteUpto = payloadByteUpto;
       }
       docBufferUpto = 0;
@@ -352,6 +380,7 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
   /** Called when we are done adding docs to this term */
   @Override
   public void finishTerm(BlockTermState _state) throws IOException {
+    // 剩余的数不足以生成packedBlock，使用VIntBlock保存
     IntBlockTermState state = (IntBlockTermState) _state;
     assert state.docFreq > 0;
 
@@ -366,10 +395,10 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
       // pulse the singleton docid into the term dictionary, freq is implicitly totalTermFreq
       singletonDocID = (int) docDeltaBuffer[0];
     } else {
+      // 写入doc信息，每个doc，存储下列信息：docDelta，freq
       singletonDocID = -1;
       // vInt encode the remaining doc deltas and freqs:
       for (int i = 0; i < docBufferUpto; i++) {
-        // 写入docDelta和freq
         final int docDelta = (int) docDeltaBuffer[i];
         final int freq = (int) freqBuffer[i];
         if (!writeFreqs) {
@@ -385,7 +414,7 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
 
     final long lastPosBlockOffset;
 
-    // 写入pos数据
+    // 写入pos数据。每个pos，存储下列信息：posDelta, payloadLength, payloadBytes, offsetDelta, offsetLength
     if (writePositions) {
       // totalTermFreq is just total number of positions(or payloads, or offsets)
       // associated with current term.
@@ -450,6 +479,7 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
 
     long skipOffset;
     if (docCount > BLOCK_SIZE) {
+      // 将内存中保存的skipList数据写入到.doc文件
       skipOffset = skipWriter.writeSkip(docOut) - docStartFP;
     } else {
       skipOffset = -1;
@@ -477,6 +507,7 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
       assert lastState.docStartFP == 0;
     }
 
+    // 保存docStartFp
     if (lastState.singletonDocID != -1
         && state.singletonDocID != -1
         && state.docStartFP == lastState.docStartFP) {
@@ -494,17 +525,22 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
       }
     }
 
+    // 保存posStartFP，payStartFP
     if (writePositions) {
       out.writeVLong(state.posStartFP - lastState.posStartFP);
       if (writePayloads || writeOffsets) {
         out.writeVLong(state.payStartFP - lastState.payStartFP);
       }
     }
+
+    // pos个数不是128的倍数，最后一部分使用Vint保存，保存lastPosBlockOffset
     if (writePositions) {
       if (state.lastPosBlockOffset != -1) {
         out.writeVLong(state.lastPosBlockOffset);
       }
     }
+
+    // 保存skipOffset
     if (state.skipOffset != -1) {
       out.writeVLong(state.skipOffset);
     }
