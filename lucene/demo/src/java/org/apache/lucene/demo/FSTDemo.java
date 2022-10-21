@@ -16,7 +16,7 @@ import java.util.Comparator;
  */
 public class FSTDemo {
 
-    public static void main(String[] args) throws IOException {
+    public static void officialDemo() throws IOException {
         // Input values (keys). These must be provided to Builder in Unicode code point (UTF8 or UTF32) sorted order.
         // Note that sorting by Java's String.compareTo, which is UTF16 sorted order, is not correct and can lead to
         // exceptions while building the FST:
@@ -63,7 +63,29 @@ public class FSTDemo {
         System.out.println(paths.topN.get(0).output); // 5
         System.out.println(Util.toBytesRef(paths.topN.get(1).input, scratchBytes).utf8ToString()); // dog
         System.out.println(paths.topN.get(1).output); // 7
+    }
 
+    public static void myDemo() throws IOException {
+        // TODO wj curr
+        String[] inputValues = {"mo", "moth", "pop", "star", "stop", "top"};
+        long[] outputValues = {100, 91, 72, 83, 54, 55};
+
+        PositiveIntOutputs outputs = PositiveIntOutputs.getSingleton();
+        FSTCompiler<Long> fstCompiler = new FSTCompiler<Long>(FST.INPUT_TYPE.BYTE1, outputs);
+        BytesRefBuilder scratchBytes = new BytesRefBuilder();
+        IntsRefBuilder scratchInts = new IntsRefBuilder();
+        for (int i = 0; i < inputValues.length; i++) {
+            scratchBytes.copyChars(inputValues[i]);
+            fstCompiler.add(Util.toIntsRef(scratchBytes.toBytesRef(), scratchInts), outputValues[i]);
+        }
+        FST<Long> fst = fstCompiler.compile();
+
+        System.out.println(Util.get(fst, new BytesRef("star")));
+    }
+
+    public static void main(String[] args) throws IOException {
+//        officialDemo();
+        myDemo();
     }
 
 }

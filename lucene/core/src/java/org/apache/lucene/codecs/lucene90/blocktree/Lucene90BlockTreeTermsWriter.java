@@ -229,9 +229,9 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
   // private final static boolean SAVE_DOT_FILES = false;
 
-  private final IndexOutput metaOut;
-  private final IndexOutput termsOut;
-  private final IndexOutput indexOut;
+  private final IndexOutput metaOut;  // terms meta file, .tmd
+  private final IndexOutput termsOut; // terms file, .tim
+  private final IndexOutput indexOut;  // term index file, .tip
   final int maxDoc;
   final int minItemsInBlock;
   final int maxItemsInBlock;
@@ -728,7 +728,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
       assert firstBlock.isFloor || newBlocks.size() == 1;
 
-      // TODO wj curr
+      // 将生成的newBlocks构建成FST
       firstBlock.compileIndex(newBlocks, scratchBytes, scratchIntsRef);  // 构建该block的FST
 
       // 将已合并的PendingEntry从pending stack中移除
@@ -752,13 +752,14 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       return true;
     }
 
-    // 写.tim文件
+
     /**
      * Writes the specified slice (start is inclusive, end is exclusive) from pending stack as a new
      * block. If isFloor is true, there were too many (more than maxItemsInBlock) entries sharing
      * the same prefix, and so we broke it into multiple floor blocks where we record the starting
      * label of the suffix of each floor block.
      */
+    // 写.tim文件，并生成PendingBlock
     private PendingBlock writeBlock(
         int prefixLength,
         boolean isFloor,
@@ -1076,7 +1077,9 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         assert fieldInfo.getIndexOptions() == IndexOptions.DOCS
                 || state.totalTermFreq >= state.docFreq
             : "postingsWriter=" + postingsWriter;
-        pushTerm(text);  // TODO wj
+
+        // 如果相同前缀的term满足条件，构建PendingBlock。并更新prefixStarts，注意prefixStarts[i]表示以lastTerm[0:i]为前缀的词在pending stack中最下面的下标
+        pushTerm(text);
 
         PendingTerm term = new PendingTerm(text, state);
 
@@ -1085,7 +1088,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         // if (DEBUG) System.out.println("    add pending term = " + text + " pending.size()=" +
         // pending.size());
 
-        sumDocFreq += state.docFreq;  // 统计文档频率和总词频
+        // 统计当前域每个词项的文档总频率和总词频，term数量
+        sumDocFreq += state.docFreq;
         sumTotalTermFreq += state.totalTermFreq;
         numTerms++;
         if (firstPendingTerm == null) {
@@ -1118,7 +1122,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
 
         // 统计term栈中的prefixTopSize
         // term栈即存放term的栈，prefixTopSize是跟栈顶term有相同前缀的term数量
-        // pending.size即栈的大小，prefixStarts[i]表示第以lastTerm[0:i]为前缀的词在pending中最下面的下标
+        // pending.size即栈的大小，prefixStarts[i]表示以lastTerm[0:i]为前缀的词在pending stack中最下面的下标
         // pending.size() - prefixStarts[i]即表示以lastTerm[0:i]为前缀的词的个数
         // How many items on top of the stack share the current suffix
         // we are closing:
@@ -1157,8 +1161,9 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         // TODO: if pending.size() is already 1 with a non-zero prefix length
         // we can save writing a "degenerate" root block, but we have to
         // fix all the places that assume the root block's prefix is the empty string:
+        // 将term栈中剩余未处理的PendingEntry生成NodeBlock。至此所有的PendingEntry会生成一个NodeBlock
         pushTerm(new BytesRef());
-        writeBlocks(0, pending.size());  // 写.tim文件，fst处理
+        writeBlocks(0, pending.size());
 
         // We better have one final "root" block:
         assert pending.size() == 1 && !pending.get(0).isTerm
@@ -1169,9 +1174,11 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         assert rootCode != null;
 
         ByteBuffersDataOutput metaOut = new ByteBuffersDataOutput();
-        fields.add(metaOut);  // 将信息保存到fields中，后续会写到.tmd文件
+        // 将信息保存到fields中，后续会写到.tmd文件. Fields保存FieldSummary数据，即terms meta data。
+        fields.add(metaOut);
 
-        metaOut.writeVInt(fieldInfo.number);  // 内存中保存tip的信息：字段序号，词项个数，FST的rootCode信息，总词项频率，总文档频率，总文档数，第一个词项和最后一个词项内容
+        // 内存中保存tmd的信息：字段序号，词项个数，FST的rootCode信息，总词项频率，总文档频率，总文档数，第一个词项和最后一个词项内容
+        metaOut.writeVInt(fieldInfo.number);
         metaOut.writeVLong(numTerms);
         metaOut.writeVInt(rootCode.length);
         metaOut.writeBytes(rootCode.bytes, rootCode.offset, rootCode.length);
@@ -1181,11 +1188,13 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         }
         metaOut.writeVLong(sumDocFreq);
         metaOut.writeVInt(docsSeen.cardinality());
-        writeBytesRef(metaOut, new BytesRef(firstPendingTerm.termBytes));
-        writeBytesRef(metaOut, new BytesRef(lastPendingTerm.termBytes));
+        writeBytesRef(metaOut, new BytesRef(firstPendingTerm.termBytes));  // minTerm
+        writeBytesRef(metaOut, new BytesRef(lastPendingTerm.termBytes));  // maxTerm
         metaOut.writeVLong(indexOut.getFilePointer());
+
+        // 将tip信息写入到.tip文件
         // Write FST to index
-        root.index.save(metaOut, indexOut);  // 将tip信息写入到.tip文件
+        root.index.save(metaOut, indexOut);
         // System.out.println("  write FST " + indexStartFP + " field=" + fieldInfo.name);
 
         /*
