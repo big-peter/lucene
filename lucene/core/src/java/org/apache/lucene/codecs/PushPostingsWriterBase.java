@@ -123,14 +123,20 @@ public abstract class PushPostingsWriterBase extends PostingsWriterBase {
     } else {
       normValues = norms.getNorms(fieldInfo);
     }
-    startTerm(normValues);  // 记录pos，offset，payload文件的offset
-    postingsEnum = termsEnum.postings(postingsEnum, enumFlags);  // 初始化读取bytePool的各种下标
+
+    // 记录pos，offset，payload文件的offset
+    startTerm(normValues);
+
+    // 初始化读取bytePool的各种下标。termsEnum类型FreqProxTermsEnum
+    postingsEnum = termsEnum.postings(postingsEnum, enumFlags);
     assert postingsEnum != null;
 
     int docFreq = 0;
     long totalTermFreq = 0;
     while (true) {
-      int docID = postingsEnum.nextDoc();  // 读取下一个包含该term的docId
+      // PostingEnum类型FreqProxPostingsEnum
+      // 读取下一个包含该term的docId，freq
+      int docID = postingsEnum.nextDoc();
       if (docID == PostingsEnum.NO_MORE_DOCS) {
         break;
       }
@@ -138,16 +144,22 @@ public abstract class PushPostingsWriterBase extends PostingsWriterBase {
       docsSeen.set(docID);
       int freq;
       if (writeFreqs) {
-        freq = postingsEnum.freq();  // 读取freq
+        // 读取freq
+        freq = postingsEnum.freq();
         totalTermFreq += freq;
       } else {
         freq = -1;
       }
-      startDoc(docID, freq);  // 开始写docId文档的数据
 
-      if (writePositions) {  // 需要写pos数据
-        for (int i = 0; i < freq; i++) {  // 该doc中term每次出现，都要记录pos数据
-          int pos = postingsEnum.nextPosition();  // 读取pos，以及payload，offset
+      // 开始写docId文档的数据
+      startDoc(docID, freq);
+
+      // 需要写pos数据
+      if (writePositions) {
+        // 该doc中term每次出现，都要记录pos数据
+        for (int i = 0; i < freq; i++) {
+          // 读取pos，以及payload，offset
+          int pos = postingsEnum.nextPosition();
           BytesRef payload = writePayloads ? postingsEnum.getPayload() : null;
           int startOffset;
           int endOffset;
@@ -158,12 +170,76 @@ public abstract class PushPostingsWriterBase extends PostingsWriterBase {
             startOffset = -1;
             endOffset = -1;
           }
-          addPosition(pos, payload, startOffset, endOffset);  // 将pos，payload，offset先写到内存数组
+
+          // 将pos，payload，offset先写到内存数组
+          addPosition(pos, payload, startOffset, endOffset);
         }
       }
 
-      finishDoc();  // 结束写doc信息，主要判断是否需要分块处理
+      // 结束写doc信息，主要是记录跳表需要的信息
+      finishDoc();
     }
+
+    /*
+    [
+        {
+            "field": "content",
+            "terms":
+            [
+                {
+                    "term": "book",
+                    "postings":
+                    [
+                        {
+                            "docId": 1,
+                            "freq": 2,
+                            "prox":
+                            [
+                                {
+                                    "position": 0,
+                                    "payload": "hi",
+                                    "offsetStart": 0,
+                                    "offsetLen": 3
+                                },
+                                {
+                                    "position": 5,
+                                    "payload": "ni",
+                                    "offsetStart": 17,
+                                    "offsetLen": 3
+                                }
+                            ]
+                        },
+                        {
+                            "docId": 2,
+                            "freq": 3,
+                            "prox":
+                            [
+                                {
+                                    "position": 0,
+                                    "payload": "hi",
+                                    "offsetStart": 0,
+                                    "offsetLen": 3
+                                },
+                                {
+                                    "position": 5,
+                                    "payload": "ni",
+                                    "offsetStart": 17,
+                                    "offsetLen": 3
+                                },
+                                {
+                                    "position": 7,
+                                    "payload": "ni",
+                                    "offsetStart": 29,
+                                    "offsetLen": 3
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+    */
 
     // 包含该term的所有文档都处理完了，执行收尾工作
     if (docFreq == 0) {
@@ -175,7 +251,7 @@ public abstract class PushPostingsWriterBase extends PostingsWriterBase {
       BlockTermState state = newTermState();
       state.docFreq = docFreq;
       state.totalTermFreq = writeFreqs ? totalTermFreq : -1;
-      finishTerm(state);  // 结束写term信息。将之前保存在内存数组中的数据写入到文件中。
+      finishTerm(state);  // 结束写term信息。将之前保存在内存数组中还未写入文件的数据写入到文件中，并将三个文件的FP等信息填充到state中
       return state;
     }
   }

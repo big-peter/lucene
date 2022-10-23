@@ -166,6 +166,7 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
     freqBuffer = new long[BLOCK_SIZE];
 
     // TODO: should we try skipping every 2/4 blocks...?
+    // docCount是state.segmentInfo.maxDoc()
     skipWriter =
         new Lucene90SkipWriter(
             MAX_SKIP_LEVELS, BLOCK_SIZE, state.segmentInfo.maxDoc(), docOut, posOut, payOut);
@@ -202,6 +203,7 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
     }
     lastDocID = 0;
     lastBlockDocID = -1;
+    // 记录当前doc，pos，pay的FP
     skipWriter.resetSkip();
     this.norms = norms;
     competitiveFreqNormAccumulator.clear();
@@ -233,19 +235,24 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
           "docs out of order (" + docID + " <= " + lastDocID + " )", docOut);
     }
 
-    docDeltaBuffer[docBufferUpto] = docDelta;  // 将docDelta，freqDelta保存到内存数组中
+    // 将docDelta，freqDelta保存到内存数组中
+    docDeltaBuffer[docBufferUpto] = docDelta;
     if (writeFreqs) {
       freqBuffer[docBufferUpto] = termDocFreq;
     }
 
+    // docDeltaBuffer数组写入下标
     docBufferUpto++;
+    // 目前处理的文档数
     docCount++;
 
     if (docBufferUpto == BLOCK_SIZE) {
       // buffer中的元素个数达到128个，生成PackedBlock写入.doc文件。packedBlock === [PackedDocDeltaBlock | PackedFreqBlock]
       // PackedBlock及将buffer中的数据经过PackedInts压缩处理。
+      // [.doc文件] 将docDelta数组编码后写入
       pforUtil.encode(docDeltaBuffer, docOut);
       if (writeFreqs) {
+        // [.doc文件] 将freq数组编码后写入
         pforUtil.encode(freqBuffer, docOut);
       }
       // NOTE: don't set docBufferUpto back to 0 here;
@@ -324,15 +331,19 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
       // 处理了128个pos信息，压缩成Block存储
 
       // 生成PackedPosBlock写入到.pos文件
+      // [.pos文件] 将pos delta数组编码后写入
       pforUtil.encode(posDeltaBuffer, posOut);
 
       if (writePayloads) {
         // 生成PackedPayBlock写入到.pay文件
         // 先生成PackedPayLengthBlock,写入.pay文件
+        // [.pay文件] 将payload length数组编码后写入
         pforUtil.encode(payloadLengthBuffer, payOut);
         // 将payLoadByteUpto写入.pay文件，即当前block中paydata的大小
+        // [.pay文件] 将payload的大小写入
         payOut.writeVInt(payloadByteUpto);
         // 将payloadBytes写入.pay文件
+        // [.pay文件] 将payload的内容写入
         payOut.writeBytes(payloadBytes, 0, payloadByteUpto);
         payloadByteUpto = 0;
       }
@@ -340,8 +351,11 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
 
       if (writeOffsets) {
         // 生成PackedOffsetStartDeltaBlock写入到.pay文件
+        // [.pay文件] 将offsetStart Delta数组编码后写入
         pforUtil.encode(offsetStartDeltaBuffer, payOut);
         // 生成PackedOffsetLengthBlock写入到.pay文件
+        // [.pay文件] 将payload的大小写入
+        // [.pay文件] 将offsetLength数组编码后写入
         pforUtil.encode(offsetLengthBuffer, payOut);
       }
       posBufferUpto = 0;
@@ -391,6 +405,7 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
     // docFreq == 1, don't write the single docid/freq to a separate file along with a pointer to
     // it.
     final int singletonDocID;
+    // 只有一个doc包含该term
     if (state.docFreq == 1) {
       // pulse the singleton docid into the term dictionary, freq is implicitly totalTermFreq
       singletonDocID = (int) docDeltaBuffer[0];
@@ -402,11 +417,15 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
         final int docDelta = (int) docDeltaBuffer[i];
         final int freq = (int) freqBuffer[i];
         if (!writeFreqs) {
+          // [.doc文件] 写入docDelta
           docOut.writeVInt(docDelta);
         } else if (freq == 1) {
+          // [.doc文件] 写入docDeltaCode
           docOut.writeVInt((docDelta << 1) | 1);
         } else {
+          // [.doc文件] 写入docDeltaCode
           docOut.writeVInt(docDelta << 1);
+          // [.doc文件] 写入freq
           docOut.writeVInt(freq);
         }
       }
@@ -438,20 +457,28 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
         for (int i = 0; i < posBufferUpto; i++) {
           final int posDelta = (int) posDeltaBuffer[i];
           if (writePayloads) {
+            // 要写payload
             final int payloadLength = (int) payloadLengthBuffer[i];
             if (payloadLength != lastPayloadLength) {
+              // 如果和上次的payload length不相同
               lastPayloadLength = payloadLength;
+              // [.pos文件] 写入posDeltaCode，长度不相同，奇数
               posOut.writeVInt((posDelta << 1) | 1);
+              // [.pos文件] 写入payLoadLength
               posOut.writeVInt(payloadLength);
             } else {
+              // [.pos文件] 写入posDeltaCode，长度相同，偶数
               posOut.writeVInt(posDelta << 1);
             }
 
             if (payloadLength != 0) {
+              // [.pos文件] 写入payload内容
               posOut.writeBytes(payloadBytes, payloadBytesReadUpto, payloadLength);
               payloadBytesReadUpto += payloadLength;
             }
           } else {
+            // 不用写payload
+            // [.pos文件] 写入posDelta
             posOut.writeVInt(posDelta);
           }
 
@@ -459,9 +486,12 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
             int delta = (int) offsetStartDeltaBuffer[i];
             int length = (int) offsetLengthBuffer[i];
             if (length == lastOffsetLength) {
+              // [.pos文件] 写入offsetStartDeltaCode，长度相同，偶数
               posOut.writeVInt(delta << 1);
             } else {
+              // [.pos文件] 写入offsetStartDeltaCode，长度不相同，奇数
               posOut.writeVInt(delta << 1 | 1);
+              // [.pos文件] 写入offsetLength
               posOut.writeVInt(length);
               lastOffsetLength = length;
             }
@@ -479,13 +509,15 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
 
     long skipOffset;
     if (docCount > BLOCK_SIZE) {
+      // 只有.doc文档写入block即文档数大于128时才会有skip list数据
       // 将内存中保存的skipList数据写入到.doc文件
+      // [.doc文件] skip list
       skipOffset = skipWriter.writeSkip(docOut) - docStartFP;
     } else {
       skipOffset = -1;
     }
 
-    state.docStartFP = docStartFP;
+    state.docStartFP = docStartFP;  // 该term开始的FP
     state.posStartFP = posStartFP;
     state.payStartFP = payStartFP;
     state.singletonDocID = singletonDocID;

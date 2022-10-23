@@ -30,6 +30,7 @@ public final class LongHeap {
 
   private final int maxSize;
 
+  // all access to heap is 1-based not 0-based.  heap[0] is unused.
   private long[] heap;
   private int size = 0;
 

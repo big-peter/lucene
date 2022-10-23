@@ -337,6 +337,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
     }
   }
 
+  // fields类型FreqProxFields
   @Override
   public void write(Fields fields, NormsProducer norms) throws IOException {
     // if (DEBUG) System.out.println("\nBTTW.write seg=" + segment);
@@ -347,6 +348,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       lastField = field;
 
       // if (DEBUG) System.out.println("\nBTTW.write seg=" + segment + " field=" + field);
+      // terms类型FreqProxTerms
       Terms terms = fields.terms(field);
       if (terms == null) {
         continue;
@@ -368,7 +370,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         termsWriter.write(term, termsEnum, norms);
       }
 
-      termsWriter.finish();  // 写入该field中的所有词项信息，直接写.tim,.tip文件，将tmd文件的信息保存在termsWriter的fields列表中，close的时候会写入.tmd文件
+      // 写入该field中的所有词项信息，直接写.tim,.tip文件，将tmd文件的信息保存在termsWriter的fields列表中，close的时候会写入.tmd文件
+      termsWriter.finish();
 
       // if (DEBUG) System.out.println("\nBTTW.write done seg=" + segment + " field=" + field);
     }
@@ -475,7 +478,10 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       // TODO: try writing the leading vLong in MSB order
       // (opposite of what Lucene does today), for better
       // outputs sharing in the FST
+      // 将该block的fp，hasTerms, isFloor编码后写入scratchBytes。fp<<2 | hasTerms | isFloor.
       scratchBytes.writeVLong(encodeOutput(fp, hasTerms, isFloor));
+
+      // floor block，特殊处理。保存sub.floorLeadByte，sub.fp, sub.hasTerms
       if (isFloor) {
         scratchBytes.writeVInt(blocks.size() - 1);
         for (int i = 1; i < blocks.size(); i++) {
@@ -502,20 +508,24 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       // indexBuilder.DEBUG = false;
       final byte[] bytes = scratchBytes.toArrayCopy();
       assert bytes.length > 0;
-      fstCompiler.add(Util.toIntsRef(prefix, scratchIntsRef), new BytesRef(bytes, 0, bytes.length));  // 添加映射 prefix -> [fp, hasTerms, isFloor]
+      // 添加映射 prefix -> [fp, hasTerms, isFloor]
+      fstCompiler.add(Util.toIntsRef(prefix, scratchIntsRef), new BytesRef(bytes, 0, bytes.length));
       scratchBytes.reset();
 
       // Copy over index for all sub-blocks
-      for (PendingBlock block : blocks) {  // 如果block有子切片，添加block的子切片
+      // 如果block有子切片，添加block的子切片
+      for (PendingBlock block : blocks) {
         if (block.subIndices != null) {
           for (FST<BytesRef> subIndex : block.subIndices) {
+            // 将subIndex中的键值对加入到fstCompiler中
             append(fstCompiler, subIndex, scratchIntsRef);
           }
           block.subIndices = null;
         }
       }
 
-      index = fstCompiler.compile();  // FST构造完成
+      // FST构造完成
+      index = fstCompiler.compile();
 
       assert subIndices == null;
 
@@ -540,6 +550,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         //  System.out.println("      add sub=" + indexEnt.input + " " + indexEnt.input + " output="
         // + indexEnt.output);
         // }
+        // 将subIndex的键值对加入到fstCompiler中
         fstCompiler.add(Util.toIntsRef(indexEnt.input, scratchIntsRef), indexEnt.output);
       }
     }
@@ -729,7 +740,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       assert firstBlock.isFloor || newBlocks.size() == 1;
 
       // 将生成的newBlocks构建成FST
-      firstBlock.compileIndex(newBlocks, scratchBytes, scratchIntsRef);  // 构建该block的FST
+      firstBlock.compileIndex(newBlocks, scratchBytes, scratchIntsRef);
 
       // 将已合并的PendingEntry从pending stack中移除
       // Remove slice from the top of the pending stack, that we just wrote:
@@ -1056,7 +1067,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       }
       */
 
-      // 将docId,freq,pos,payload,offset信息写到.doc, .pos(包含offset数据), .pay文件中
+      // 将docId,freq,pos,payload,offset信息写到.doc, .pos, .pay(包含payload, offset数据)文件中
       BlockTermState state = postingsWriter.writeTerm(text, termsEnum, docsSeen, norms);
 
       /*
@@ -1161,13 +1172,14 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         // TODO: if pending.size() is already 1 with a non-zero prefix length
         // we can save writing a "degenerate" root block, but we have to
         // fix all the places that assume the root block's prefix is the empty string:
-        // 将term栈中剩余未处理的PendingEntry生成NodeBlock。至此所有的PendingEntry会生成一个NodeBlock
         pushTerm(new BytesRef());
+        // 将term栈中剩余未处理的PendingEntry生成NodeBlock。至此所有的PendingEntry会生成一个NodeBlock
         writeBlocks(0, pending.size());
 
         // We better have one final "root" block:
         assert pending.size() == 1 && !pending.get(0).isTerm
             : "pending.size()=" + pending.size() + " pending=" + pending;
+        // 此时pending中只有一个PendingBlock
         final PendingBlock root = (PendingBlock) pending.get(0);
         assert root.prefix.length == 0;
         final BytesRef rootCode = root.index.getEmptyOutput();  // root.index类型是FST
@@ -1192,7 +1204,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         writeBytesRef(metaOut, new BytesRef(lastPendingTerm.termBytes));  // maxTerm
         metaOut.writeVLong(indexOut.getFilePointer());
 
-        // 将tip信息写入到.tip文件
+        // 将fst（键值对）信息写入到.tip文件
         // Write FST to index
         root.index.save(metaOut, indexOut);
         // System.out.println("  write FST " + indexStartFP + " field=" + fieldInfo.name);

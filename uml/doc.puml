@@ -1,0 +1,66 @@
+### Packed Blocks and VInt Blocks: 见Lucene90PostingsFormat类文档
+@startuml
+
+json JSON {
+   "Header":"",
+   "Content":[
+    {"FieldA\t": [
+      {"Term1\t": [
+         {"PackedBlock\t":[
+            {"PackedDocDeltaBlock\t":[
+               {"Token\t\t": "(numEs << 5) | bitsRequired"},
+               {"DocDeltas\t": "bit packing"},
+               {"Exceptions\t": "(eIdx, eInc) * numEs"}
+            ]},
+            {"PackedFreqBlock\t\t":[
+              {"Token\t\t": "(numEs << 5) | bitsRequired"},
+              {"Freqs\t\t": "bit packing"},
+              {"Exceptions\t": "(eIdx, eInc) * numEs"}
+            ]}
+         ]},
+         {"PackedBlock\t":["..."]},
+         {"...\t\t\t":[]},
+         {"VIntBlock\t\t":[
+            {"VIntDocFreqBlock\t\t": [
+               {"DocFreqPair\t": [
+                  "DocDeltaCode\t\t\t",
+                  "Freq"
+               ]}
+            ]},
+            {"VIntProxBlock\t\t\t": [
+               {"ProxTuple\t":[
+                  "PosDeltaCode",
+                  "payloadLength",
+                  "payloadBytes",
+                  "offsetStartDeltaCode\t\t",
+                  "offsetLength"
+               ]}
+            ]}
+         ]}
+      ]},
+      {"SkipList\t": [
+         {"Level_n\t\t": [
+            {"idx":[
+               "docSkip",
+               "docFPSkip",
+               "posFPSkip",
+               "posBlockOffset",
+               "payLength",
+               "payFPSkip",
+               "freqNorm",
+               ""
+            ]}
+         ]},
+         {"Level_n-1\t": []},
+         {"...\t\t\t": []},
+         {"Level_0\t\t": []}
+      ]},
+      {"Term2\t": []},
+      {"...\t\t": []}
+    ]},
+    {"FieldB\t":["..."]},
+    {"...\t\t":["..."]}
+   ],
+   "Footer":""
+}
+@enduml

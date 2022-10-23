@@ -376,6 +376,7 @@ class FreqProxFields extends Fields {
         if (!readTermFreq) {
           docID += code;
         } else {
+          // 差值存储
           docID += code >>> 1;
           if ((code & 1) != 0) {
             freq = 1;

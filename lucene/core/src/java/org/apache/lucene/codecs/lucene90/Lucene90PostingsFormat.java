@@ -404,9 +404,11 @@ public final class Lucene90PostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
+    // 用来写.doc, .pos, .pay文件
     PostingsWriterBase postingsWriter = new Lucene90PostingsWriter(state);
     boolean success = false;
     try {
+      // 用来写.tim, .tip, .tmd文件
       FieldsConsumer ret =
           new Lucene90BlockTreeTermsWriter(
               state, postingsWriter, minTermBlockSize, maxTermBlockSize);

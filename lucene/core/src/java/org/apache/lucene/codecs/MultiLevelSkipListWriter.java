@@ -132,10 +132,13 @@ public abstract class MultiLevelSkipListWriter {
     assert df % skipInterval == 0;
 
     // 计算该block需要写入SkipDatum信息的层数
-    int numLevels = 1;
+    int numLevels = 1;  // 默认写第0层
     df /= skipInterval;
 
-    // determine max level
+    // determine max level。
+    // 第1层，每8^1个block，即8*128个doc
+    // 第2层，每8^2个block，即64*128个doc
+    // 。。。
     while ((df % skipMultiplier) == 0 && numLevels < numberOfSkipLevels) {
       numLevels++;
       df /= skipMultiplier;
@@ -150,7 +153,7 @@ public abstract class MultiLevelSkipListWriter {
       long newChildPointer = skipBuffer[level].size();
 
       if (level != 0) {
-        // 写入指向下一层的信息
+        // 写入指向下一层的offset
         // store child pointers for all levels except the lowest
         writeChildPointer(childPointer, skipBuffer[level]);
       }
@@ -178,6 +181,7 @@ public abstract class MultiLevelSkipListWriter {
         skipBuffer[level].copyTo(output);
       }
     }
+    // skipBuffer[0]不保存length
     skipBuffer[0].copyTo(output);
 
     return skipPointer;

@@ -81,7 +81,12 @@ final class ForUtil {
   }
 
   private static void collapse8(long[] arr) {
+    // 128 / 8 = 16, 将原来的8个long写入一个long中
     for (int i = 0; i < 16; ++i) {
+      // 0, 16, 32, 48, 64, 80, 96, 112
+      // 1, 17, 33, 49, 65, 81, 97, 113
+      // ...
+      // 15, 31, 47, 63, 79, 95, 111, 127
       arr[i] =
           (arr[i] << 56)
               | (arr[16 + i] << 48)
@@ -139,25 +144,32 @@ final class ForUtil {
     final int nextPrimitive;
     final int numLongs;
     if (bitsPerValue <= 8) {
+      // 原来的8个long写入一个long
       nextPrimitive = 8;
       numLongs = BLOCK_SIZE / 8;
       collapse8(longs);
     } else if (bitsPerValue <= 16) {
+      // 原来的4个long写入一个long
       nextPrimitive = 16;
       numLongs = BLOCK_SIZE / 4;
       collapse16(longs);
     } else {
+      // 原来的2个long写入一个long
       nextPrimitive = 32;
       numLongs = BLOCK_SIZE / 2;
       collapse32(longs);
     }
 
+    // numLongsPerShift表示collapse后的long个数
     final int numLongsPerShift = bitsPerValue * 2;
     int idx = 0;
+    // shift表示collapse后每个数有shift位是0，无意义的
     int shift = nextPrimitive - bitsPerValue;
     for (int i = 0; i < numLongsPerShift; ++i) {
-      tmp[i] = longs[idx++] << shift;
+      tmp[i] = longs[idx++] << shift;  // 折叠后最左的long的无效位移除
     }
+
+    // 此处 idx 没有重置，从前面的下标继续处理
     for (shift = shift - bitsPerValue; shift >= 0; shift -= bitsPerValue) {
       for (int i = 0; i < numLongsPerShift; ++i) {
         tmp[i] |= longs[idx++] << shift;

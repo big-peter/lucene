@@ -66,7 +66,6 @@ public class FSTDemo {
     }
 
     public static void myDemo() throws IOException {
-        // TODO wj curr
         String[] inputValues = {"mo", "moth", "pop", "star", "stop", "top"};
         long[] outputValues = {100, 91, 72, 83, 54, 55};
 

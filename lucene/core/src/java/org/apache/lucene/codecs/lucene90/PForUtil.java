@@ -57,13 +57,17 @@ final class PForUtil {
     this.forUtil = forUtil;
   }
 
+  // 一般out：token [(numExceptions << 5) | patchedBitsRequired] + longs [bit packing] + exceptions [(eIdx, eInc) * numExceptions]
   /** Encode 128 integers from {@code longs} into {@code out}. */
   void encode(long[] longs, DataOutput out) throws IOException {
     // Determine the top MAX_EXCEPTIONS + 1 values
+    // 最小堆
     final LongHeap top = new LongHeap(MAX_EXCEPTIONS + 1);
     for (int i = 0; i <= MAX_EXCEPTIONS; ++i) {
       top.push(longs[i]);
     }
+
+    // 找到最大的MAX_EXCEPTIONS=7个元素
     long topValue = top.top();
     for (int i = MAX_EXCEPTIONS + 1; i < ForUtil.BLOCK_SIZE; ++i) {
       if (longs[i] > topValue) {
@@ -71,6 +75,7 @@ final class PForUtil {
       }
     }
 
+    // 找到longs中的最大值
     long max = 0L;
     for (int i = 1; i <= top.size(); ++i) {
       max = Math.max(max, top.get(i));
@@ -78,8 +83,11 @@ final class PForUtil {
 
     final int maxBitsRequired = PackedInts.bitsRequired(max);
     // We store the patch on a byte, so we can't decrease the number of bits required by more than 8
+    // topValue是update后top堆顶元素，即MAX_EXCEPTIONS=7个元素中最小的一个
+    // -8是为了确保异常个数不超过8个，可以用3个bit位表示异常个数
     final int patchedBitsRequired =
         Math.max(PackedInts.bitsRequired(topValue), maxBitsRequired - 8);
+
     int numExceptions = 0;
     final long maxUnpatchedValue = (1L << patchedBitsRequired) - 1;
     for (int i = 2; i <= top.size(); ++i) {
@@ -92,27 +100,41 @@ final class PForUtil {
       int exceptionCount = 0;
       for (int i = 0; i < ForUtil.BLOCK_SIZE; ++i) {
         if (longs[i] > maxUnpatchedValue) {
+          // 保存exception下标
           exceptions[exceptionCount * 2] = (byte) i;
+          // 保存最高的几位
           exceptions[exceptionCount * 2 + 1] = (byte) (longs[i] >>> patchedBitsRequired);
+          // 保留最低的几位
           longs[i] &= maxUnpatchedValue;
           exceptionCount++;
         }
       }
+
+      // 肯定只有最大的元素会超过maxUnpatchedValue，所以exceptionCount == numExceptions
       assert exceptionCount == numExceptions : exceptionCount + " " + numExceptions;
     }
 
     if (allEqual(longs) && maxBitsRequired <= 8) {
+      // 截取后所有值相等，且保存最大值需要的bit位数小于等于8
       for (int i = 0; i < numExceptions; ++i) {
+        // 由于需要bit位数小于等于8，将高位还原后可以用一个byte保存，还原之
         exceptions[2 * i + 1] =
             (byte) (Byte.toUnsignedLong(exceptions[2 * i + 1]) << patchedBitsRequired);
       }
+
+      // 写入异常个数，numExceptions << 5
       out.writeByte((byte) (numExceptions << 5));
+      // 写入 value（都相等，使用VLong编码）
       out.writeVLong(longs[0]);
     } else {
       final int token = (numExceptions << 5) | patchedBitsRequired;
+      // 写入token，即 异常个数 + patchedBitsRequired
       out.writeByte((byte) token);
+      // 将longs编码后写入out
       forUtil.encode(longs, patchedBitsRequired, out);
     }
+
+    // 将exception数据写入out
     out.writeBytes(exceptions, exceptions.length);
   }
 
