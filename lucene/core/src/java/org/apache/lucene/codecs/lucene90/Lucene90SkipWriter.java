@@ -182,7 +182,7 @@ final class Lucene90SkipWriter extends MultiLevelSkipListWriter {
 
   @Override
   protected void writeSkipData(int level, DataOutput skipBuffer) throws IOException {
-
+    // 写skipData前不用先写length，因为skipData的元素是确定的
     int delta = curDoc - lastSkipDoc[level];
 
     // docSkip，差值存储

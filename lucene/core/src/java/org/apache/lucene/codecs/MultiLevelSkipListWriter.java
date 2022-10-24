@@ -177,7 +177,9 @@ public abstract class MultiLevelSkipListWriter {
     for (int level = numberOfSkipLevels - 1; level > 0; level--) {
       long length = skipBuffer[level].size();
       if (length > 0) {
+        // level length
         writeLevelLength(length, output);
+        // level data
         skipBuffer[level].copyTo(output);
       }
     }

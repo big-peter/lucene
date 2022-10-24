@@ -1,7 +1,40 @@
-### Packed Blocks and VInt Blocks: 见Lucene90PostingsFormat类文档
-@startuml
+1. Packed Blocks and VInt Blocks
+    写.doc, .pos, .pay文件时，会对docId, freq, pos, payloadLen, payloadBytes, offsetStart, offsetLength数组做Packed Block和
+VInt Block处理，即每处理128个文档，就将docId，freq数组打包成一个Packed Block，或每处理128个Prox，就将pos, payloadLen, payloadBytes,
+offsetStart, offsetLength数组打包成一个PackedBlock。如果不足128个，就用VInt Block保存。这种方式保存这些数据主要是为了数据压缩，节省空间。
+    payload, offset如果可以packed block，会保存在.pay文件。否则，以VInt Block的形式保存在.pos文件中。
+    详见Lucene90PostingsFormat类文档。
+    注意：doc文件处理了128个doc可以packed block时，pos，pay文件不一定可以packed block。
 
-json JSON {
+2. SkipList
+    skipList保存在.doc文件中，每个term有一个skipList，在处理完某个term时会写入该term的skipList数据。skipList主要是为了在查询某个term的
+postings中某个docId的freq，pos，payload，offset时，能够快速在Packed Block间快速移动。
+    skipList有两个参数：
+        skipInterval: 每skipInterval个文档，将其写入到第0层。默认128
+        skipMultiplier：对于第n层(n > 0)，n-1层每处理skipMultiplier个，将其写到第n层.默认8
+    所以正常意义的skipInterval其实是skiipMultiplier。
+    每当处理128个doc，将docId，freq打包成一个Packed Block后，会将该Packed Block中的最后一个doc的下列信息写入SkipList：
+        docSkip: docId delta, 与该层前一个docId的差值
+        docFPSkip: 该doc Block下一个block在doc文件开始写入的FP delta，与该层前一个FP的delta
+        posFPSkip: 下一个pos block在pos文件开始写入的FP，与该层前一个FP的delta
+        posBlockOffset: 下一个pos block可能还在内存中，该值保存内存中pos buffer的下标，即当前内存中prox的个数
+        sumPayLength: 内存中payloadBytes的大小，及内存中所有payload的大小只和
+        payFPSkip: 下一个pay Block在pay文件开始写入的FP，与该层前一个FP的delta
+        freqNorm: TODO wj
+        childPointer：除了第0层，其他的skipData都有该字段，表示下一层中该节点的offset(FP)
+    skipList的增长规则：
+        每128个doc，会将最后一个doc的信息其写入到第0层
+        如果currDoc = 128 * 8^k, 会将其写入到0, ... ,k层。
+    查找时，docId要么在skipList中，要么不在。如果在，直接找到对应的block。如果不在，找到比其大的最近一个docId，其就在该Block中。
+    示意图如下：
+                                                d                                   (2 level)
+                        d                       d           d                       (1 level)
+            d           d           d           d           d           d           (0 level)
+    d   d   d   d   d   d   d   d   d   d   d   d   d   d   d   d   d   d   d   d  （docId postings）
+    skipInterval = 3, skipMultiplier = 2
+
+@startuml
+json ".doc File Layout" as J {
    "Header":"",
    "Content":[
     {"FieldA\t": [
@@ -38,24 +71,44 @@ json JSON {
             ]}
          ]}
       ]},
-      {"SkipList\t": [
+      {"SkipList1\t": [
          {"Level_n\t\t": [
-            {"idx":[
-               "docSkip",
-               "docFPSkip",
-               "posFPSkip",
-               "posBlockOffset",
-               "payLength",
-               "payFPSkip",
-               "freqNorm",
-               ""
-            ]}
+            "levelLength",
+            {"skipDatas\t\t\t":[
+               {"skipData\t\t":[
+                  "docSkip",
+                  "docFPSkip",
+                  "posFPSkip",
+                  "posBlockOffset\t\t\t",
+                  "payLength",
+                  "payFPSkip",
+                  "freqNorm",
+                  "childPointer"
+               ]},
+               {"...\t\t\t": ""}
+            ]
+            }
          ]},
          {"Level_n-1\t": []},
          {"...\t\t\t": []},
-         {"Level_0\t\t": []}
+         {"Level_0\t\t": [
+            {"skipDatas\t\t\t":[
+               {"skipData\t\t":[
+                  "docSkip",
+                  "docFPSkip",
+                  "posFPSkip",
+                  "posBlockOffset\t\t\t",
+                  "payLength",
+                  "payFPSkip",
+                  "freqNorm"
+               ]},
+               {"...\t\t\t": ""}
+            ]
+            }
+         ]}
       ]},
       {"Term2\t": []},
+      {"SkipList2\t": []},
       {"...\t\t": []}
     ]},
     {"FieldB\t":["..."]},
