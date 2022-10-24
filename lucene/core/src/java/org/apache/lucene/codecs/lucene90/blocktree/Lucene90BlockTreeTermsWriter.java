@@ -254,8 +254,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       throws IOException {
     validateSettings(minItemsInBlock, maxItemsInBlock);
 
-    this.minItemsInBlock = minItemsInBlock;
-    this.maxItemsInBlock = maxItemsInBlock;
+    this.minItemsInBlock = minItemsInBlock;  // default 25
+    this.maxItemsInBlock = maxItemsInBlock;  // default 48
 
     this.maxDoc = state.segmentInfo.maxDoc();
     this.fieldInfos = state.fieldInfos;
@@ -354,8 +354,15 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         continue;
       }
 
+      /*
+      一个Field一个TermsWriter
+      某个term的doc，pos，pay文件由Lucene90PostingsWriter处理, 共享, 每次开始处理某个term时重置
+      某个term的tim,tip,tmd文件由所属field的TermsWriter处理
+       */
+
       // 将该Field的所有term的信息依次写入.doc, .pos, .pay文件
       TermsEnum termsEnum = terms.iterator();
+      // 每个field一个TermsWriter
       TermsWriter termsWriter = new TermsWriter(fieldInfos.fieldInfo(field));
       while (true) {
         BytesRef term = termsEnum.next();
@@ -678,6 +685,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         // suffixLeadLabel);
 
         if (suffixLeadLabel != lastSuffixLeadLabel) {
+          // 进入if说明suffixLeadLabel 与 lastSuffixLeadLabel不同，保证划分block时leadLabel不会划分到两个block中
           int itemsInBlock = i - nextBlockStart;
           if (itemsInBlock >= minItemsInBlock && end - nextBlockStart > maxItemsInBlock) {
             // The count is too large for one block, so we must break it into "floor" blocks, where
@@ -698,7 +706,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
                     isFloor,
                     nextFloorLeadLabel,
                     nextBlockStart,
-                    i,
+                    i,  // i不包含
                     hasTerms,
                     hasSubBlocks));
 
@@ -853,8 +861,8 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
           // }
 
           // For leaf block we write suffix straight
-          suffixLengthsWriter.writeVInt(suffix);  // ByteBuffersDataOutput，常见TermsWriter对象时创建
-          suffixWriter.append(term.termBytes, prefixLength, suffix);
+          suffixLengthsWriter.writeVInt(suffix);  // ByteBuffersDataOutput，创建TermsWriter对象时创建
+          suffixWriter.append(term.termBytes, prefixLength, suffix);  // BytesRefBuilder，保存suffixBytes
           assert floorLeadLabel == -1 || (term.termBytes[prefixLength] & 0xff) >= floorLeadLabel;
 
           // Write term stats, to separate byte[] blob:
@@ -965,6 +973,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       // We also only start compressing when the prefix length is greater than 2 since blocks whose
       // prefix length is
       // 1 or 2 always all get visited when running a fuzzy query whose max number of edits is 2.
+      // 平均后缀长度小于2且公共前缀长度大于2
       if (suffixWriter.length() > 2L * numEntries && prefixLength > 2) {
         // LZ4 inserts references whenever it sees duplicate strings of 4 chars or more, so only try
         // it out if the
@@ -975,6 +984,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
           }
           LZ4.compress(
               suffixWriter.bytes(), 0, suffixWriter.length(), spareWriter, compressionHashTable);
+          // 如果压缩后的大小小于原来的3/4
           if (spareWriter.size() < suffixWriter.length() - (suffixWriter.length() >>> 2)) {
             // LZ4 saved more than 25%, go for it
             compressionAlg = CompressionAlgorithm.LZ4;
@@ -1057,6 +1067,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       postingsWriter.setField(fieldInfo);
     }
 
+    // 处理某个field中的单个term
     /** Writes one term's worth of postings. */
     public void write(BytesRef text, TermsEnum termsEnum, NormsProducer norms) throws IOException {
       /*
@@ -1134,7 +1145,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         // 统计term栈中的prefixTopSize
         // term栈即存放term的栈，prefixTopSize是跟栈顶term有相同前缀的term数量
         // pending.size即栈的大小，prefixStarts[i]表示以lastTerm[0:i]为前缀的词在pending stack中最下面的下标
-        // pending.size() - prefixStarts[i]即表示以lastTerm[0:i]为前缀的词的个数
+        // pending.size() - prefixStarts[i]即表示以lastTerm[0:i]为前缀的词的个数，前缀长度为i + 1
         // How many items on top of the stack share the current suffix
         // we are closing:
         int prefixTopSize = pending.size() - prefixStarts[i];
@@ -1153,6 +1164,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       }
 
       // Init new tail:
+      // prefixStarts[i]表示以text[0:i]为前缀的词在pending中的下标
       for (int i = prefixLength; i < text.length; i++) {
         prefixStarts[i] = pending.size();
       }
@@ -1167,13 +1179,14 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         // Arrays.toString(prefixStarts));
 
         // Add empty term to force closing of all final blocks:
+        // 确定所有相同前缀（长度从最长到1）满足条件的entry都已合并成PendingBlock
         pushTerm(new BytesRef());
 
         // TODO: if pending.size() is already 1 with a non-zero prefix length
         // we can save writing a "degenerate" root block, but we have to
         // fix all the places that assume the root block's prefix is the empty string:
         pushTerm(new BytesRef());
-        // 将term栈中剩余未处理的PendingEntry生成NodeBlock。至此所有的PendingEntry会生成一个NodeBlock
+        // 将term栈中剩余未处理的PendingEntry生成NodeBlock。至此所有的PendingEntry会生成一个PendingBlock
         writeBlocks(0, pending.size());
 
         // We better have one final "root" block:

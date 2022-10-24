@@ -4,21 +4,21 @@
 @startuml
 json ".pos File Layout" as J {
    "Header":[
-      {"HeaderMagic[Int]\t": "0x3fd76c17"},
-      {"Codec[String]\t\t": "Lucene90PostingsWriterPos"},
-      {"Version[Int]\t\t": "0"},
-      {"Id[16 bytes]\t\t": "random id"},
-      {"SuffixLength[byte]\t": "0x0A"},
-      {"Suffix[bytes]\t\t": "Lucene90_0"}
+      {"HeaderMagic\t": "[Int] 0x3fd76c17"},
+      {"Codec\t\t": "[String] Lucene90PostingsWriterPos"},
+      {"Version\t\t": "[Int] 0"},
+      {"Id\t\t\t": "[16 Bytes] random id"},
+      {"SuffixLength\t": "[Byte] 0x0A"},
+      {"Suffix\t\t": "[Bytes] Lucene90_0"}
    ],
    "Content":[
     {"FieldA\t": [
       {"Term1\t": [
          {"PackedBlock\t":[
             {"PackedPosDeltaBlock\t":[
-               {"Token\t\t": "(numEs << 5) | bitsRequired"},
-               {"PosDeltas\t": "bit packing"},
-               {"Exceptions\t": "(eIdx, eInc) * numEs"}
+               {"Token\t\t": "[Byte] (numEs << 5) | bitsRequired\t"},
+               {"PosDeltas\t": "[Longs] bit packing"},
+               {"Exceptions\t": "[Bytes] (eIdx, eInc) * numEs"}
             ]}
          ]},
          {"PackedBlock\t":["..."]},
@@ -26,11 +26,11 @@ json ".pos File Layout" as J {
          {"VIntBlock\t\t":[
             {"VIntProxBlock\t\t\t": [
                {"ProxTuple\t":[
-                  "PosDeltaCode",
-                  "payloadLength",
-                  "payloadBytes",
-                  "offsetStartDeltaCode\t\t",
-                  "offsetLength"
+                  "[VInt] PosDeltaCode",
+                  "[VInt] payloadLength",
+                  "[Bytes] payloadBytes",
+                  "[VInt] offsetStartDeltaCode\t\t\t",
+                  "[VInt] offsetLength"
                ]},
                {"...\t\t\t":["..."]}
             ]}
@@ -43,9 +43,9 @@ json ".pos File Layout" as J {
     {"...\t\t":["..."]}
    ],
    "Footer":[
-      {"FooterMagic[Int]\t": "0xc02893e8"},
-      {"Zero[Int]\t\t\t": "0"},
-      {"CRC[Long]\t\t": "crc"}
+      {"FooterMagic\t": "[Int] 0xc02893e8"},
+      {"Zero\t\t\t": "[Int] 0"},
+      {"CRC\t\t\t": "[Long] crc"}
    ]
 }
 @enduml

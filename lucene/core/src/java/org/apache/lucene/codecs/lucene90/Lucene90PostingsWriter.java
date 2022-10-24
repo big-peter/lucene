@@ -512,6 +512,7 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
       // 只有.doc文档写入block即文档数大于128时才会有skip list数据
       // 将内存中保存的skipList数据写入到.doc文件
       // [.doc文件] skip list
+      // skipOffset表示skipList开始FP相对于term在doc开始FP的offset
       skipOffset = skipWriter.writeSkip(docOut) - docStartFP;
     } else {
       skipOffset = -1;
@@ -522,13 +523,16 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
     state.payStartFP = payStartFP;
     state.singletonDocID = singletonDocID;
     state.skipOffset = skipOffset;
-    state.lastPosBlockOffset = lastPosBlockOffset;
+    state.lastPosBlockOffset = lastPosBlockOffset;  // 表示pos文件中VInt Block开始的FP相对startFP的offset
     docBufferUpto = 0;
     posBufferUpto = 0;
     lastDocID = 0;
     docCount = 0;
   }
 
+  // 将docStartFPDelta，posStartFPDelta, payStartFPDelta, lastPosBlockOffset, skipListOffset写到out中
+  // lastPosBlockOffset是由于最后的未满128的prox会写到pos文件中，该值表示该VInt Block开始的位置，所以需要保存
+  // singletonDocID
   @Override
   public void encodeTerm(
       DataOutput out, FieldInfo fieldInfo, BlockTermState _state, boolean absolute)
@@ -543,6 +547,7 @@ public final class Lucene90PostingsWriter extends PushPostingsWriterBase {
     if (lastState.singletonDocID != -1
         && state.singletonDocID != -1
         && state.docStartFP == lastState.docStartFP) {
+      // 针对 unique id的优化，只保存delta
       // With runs of rare values such as ID fields, the increment of pointers in the docs file is
       // often 0.
       // Furthermore some ID schemes like auto-increment IDs or Flake IDs are monotonic, so we

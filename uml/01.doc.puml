@@ -9,7 +9,9 @@ offsetStart, offsetLength数组打包成一个PackedBlock。如果不足128个�
 2. .doc文件
     doc文件保存term的posting docId，freq 以及term的skipList，用于在doc,pos,pay文件的多个packed block间快速查询。
     a. singletonDocId
-        对于df=1的term，docId和词频不会保存在doc文件中，而是保存在tip文件中。
+        对于df=1的term，docId和词频不会保存在doc文件中，而是保存在tip文件中。TODO wj
+    b. 排序
+        field，term都按字典序排序
 
 3. SkipList
     skipList保存在.doc文件中，每个term有一个skipList，在处理完某个term时会写入该term的skipList数据。skipList主要是为了在查询某个term的
@@ -42,26 +44,26 @@ postings中某个docId的freq，pos，payload，offset时，能够快速在Packe
 @startuml
 json ".doc File Layout" as J {
    "Header":[
-      {"HeaderMagic[Int]\t": "0x3fd76c17"},
-      {"Codec[String]\t\t": "Lucene90PostingsWriterDoc"},
-      {"Version[Int]\t\t": "0"},
-      {"Id[16 bytes]\t\t": "random id"},
-      {"SuffixLength[byte]\t": "0x0A"},
-      {"Suffix[bytes]\t\t": "Lucene90_0"}
+      {"HeaderMagic\t": "[Int] 0x3fd76c17"},
+      {"Codec\t\t": "[String] Lucene90PostingsWriterDoc"},
+      {"Version\t\t": "[Int] 0"},
+      {"Id\t\t\t": "[16 Bytes] random id"},
+      {"SuffixLength\t": "[Byte] 0x0A"},
+      {"Suffix\t\t": "[Bytes] Lucene90_0"}
    ],
    "Content":[
     {"FieldA\t": [
       {"Term1\t": [
          {"PackedBlock\t":[
             {"PackedDocDeltaBlock\t":[
-               {"Token\t\t": "(numEs << 5) | bitsRequired"},
-               {"DocDeltas\t": "bit packing"},
-               {"Exceptions\t": "(eIdx, eInc) * numEs"}
+               {"Token\t\t": "[Byte] (numEs << 5) | bitsRequired\t"},
+               {"DocDeltas\t": "[Longs] bit packing"},
+               {"Exceptions\t": "[Bytes] (eIdx, eInc) * numEs"}
             ]},
             {"PackedFreqBlock\t\t":[
-              {"Token\t\t": "(numEs << 5) | bitsRequired"},
-              {"Freqs\t\t": "bit packing"},
-              {"Exceptions\t": "(eIdx, eInc) * numEs"}
+              {"Token\t\t": "[Byte] (numEs << 5) | bitsRequired\t"},
+              {"Freqs\t\t": "[Longs] bit packing"},
+              {"Exceptions\t": "[Bytes] (eIdx, eInc) * numEs"}
             ]}
          ]},
          {"PackedBlock\t":["..."]},
@@ -69,8 +71,8 @@ json ".doc File Layout" as J {
          {"VIntBlock\t\t":[
             {"VIntDocFreqBlock\t\t": [
                {"DocFreqPair\t": [
-                  "DocDeltaCode\t\t\t",
-                  "Freq"
+                  "[VInt] DocDeltaCode\t\t\t\t",
+                  "[VInt] Freq"
                ]},
                {"...\t\t\t": ["..."]}
             ]}
@@ -78,17 +80,17 @@ json ".doc File Layout" as J {
       ]},
       {"SkipList1\t": [
          {"Level_n\t\t": [
-            "levelLength",
+            "[VLong] levelLength",
             {"skipDatas\t\t\t":[
                {"skipData\t\t":[
-                  "docSkip",
-                  "docFPSkip",
-                  "posFPSkip",
-                  "posBlockOffset\t\t\t",
-                  "payLength",
-                  "payFPSkip",
-                  "freqNorm",
-                  "childPointer"
+                  "[VInt] docSkip",
+                  "[VLong] docFPSkip",
+                  "[VLong] posFPSkip",
+                  "[VInt] posBlockOffset\t\t\t\t",
+                  "[VInt] payLength",
+                  "[VLong] payFPSkip",
+                  "[Bytes] freqNorm",
+                  "[VLong] childPointer"
                ]},
                {"...\t\t\t": "..."}
             ]
@@ -99,13 +101,13 @@ json ".doc File Layout" as J {
          {"Level_0\t\t": [
             {"skipDatas\t\t\t":[
                {"skipData\t\t":[
-                  "docSkip",
-                  "docFPSkip",
-                  "posFPSkip",
-                  "posBlockOffset\t\t\t",
-                  "payLength",
-                  "payFPSkip",
-                  "freqNorm"
+                  "[VInt] docSkip",
+                  "[VLong] docFPSkip",
+                  "[VLong] posFPSkip",
+                  "[VInt] posBlockOffset\t\t\t\t",
+                  "[VInt] payLength",
+                  "[VLong] payFPSkip",
+                  "[Bytes] freqNorm"
                ]},
                {"...\t\t\t": "..."}
             ]
@@ -120,9 +122,9 @@ json ".doc File Layout" as J {
     {"...\t\t":["..."]}
    ],
    "Footer":[
-      {"FooterMagic[Int]\t": "0xc02893e8"},
-      {"Zero[Int]\t\t\t": "0"},
-      {"CRC[Long]\t\t": "crc"}
+      {"FooterMagic\t": "[Int] 0xc02893e8"},
+      {"Zero\t\t\t": "[Int] 0"},
+      {"CRC\t\t\t": "[Long] crc"}
    ]
 }
 @enduml
