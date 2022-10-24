@@ -6,13 +6,19 @@ offsetStart, offsetLength数组打包成一个PackedBlock。如果不足128个�
     详见Lucene90PostingsFormat类文档。
     注意：doc文件处理了128个doc可以packed block时，pos，pay文件不一定可以packed block。
 
-2. SkipList
+2. .doc文件
+    doc文件保存term的posting docId，freq 以及term的skipList，用于在doc,pos,pay文件的多个packed block间快速查询。
+    a. singletonDocId
+        对于df=1的term，docId和词频不会保存在doc文件中，而是保存在tip文件中。
+
+3. SkipList
     skipList保存在.doc文件中，每个term有一个skipList，在处理完某个term时会写入该term的skipList数据。skipList主要是为了在查询某个term的
-postings中某个docId的freq，pos，payload，offset时，能够快速在Packed Block间快速移动。
+postings中某个docId的freq，pos，payload，offset时，能够快速在Packed Block间快速移动。如果term的posting列表不大于128，则不会生成skipList。
     skipList有两个参数：
         skipInterval: 每skipInterval个文档，将其写入到第0层。默认128
         skipMultiplier：对于第n层(n > 0)，n-1层每处理skipMultiplier个，将其写到第n层.默认8
     所以正常意义的skipInterval其实是skiipMultiplier。
+    除了第0层，其他层开始时都有length数据。
     每当处理128个doc，将docId，freq打包成一个Packed Block后，会将该Packed Block中的最后一个doc的下列信息写入SkipList：
         docSkip: docId delta, 与该层前一个docId的差值
         docFPSkip: 该doc Block下一个block在doc文件开始写入的FP delta，与该层前一个FP的delta
@@ -59,22 +65,14 @@ json ".doc File Layout" as J {
             ]}
          ]},
          {"PackedBlock\t":["..."]},
-         {"...\t\t\t":[]},
+         {"...\t\t\t":["..."]},
          {"VIntBlock\t\t":[
             {"VIntDocFreqBlock\t\t": [
                {"DocFreqPair\t": [
                   "DocDeltaCode\t\t\t",
                   "Freq"
-               ]}
-            ]},
-            {"VIntProxBlock\t\t\t": [
-               {"ProxTuple\t":[
-                  "PosDeltaCode",
-                  "payloadLength",
-                  "payloadBytes",
-                  "offsetStartDeltaCode\t\t",
-                  "offsetLength"
-               ]}
+               ]},
+               {"...\t\t\t": ["..."]}
             ]}
          ]}
       ]},
@@ -92,12 +90,12 @@ json ".doc File Layout" as J {
                   "freqNorm",
                   "childPointer"
                ]},
-               {"...\t\t\t": ""}
+               {"...\t\t\t": "..."}
             ]
             }
          ]},
-         {"Level_n-1\t": []},
-         {"...\t\t\t": []},
+         {"Level_n-1\t": ["..."]},
+         {"...\t\t\t": ["..."]},
          {"Level_0\t\t": [
             {"skipDatas\t\t\t":[
                {"skipData\t\t":[
@@ -109,14 +107,14 @@ json ".doc File Layout" as J {
                   "payFPSkip",
                   "freqNorm"
                ]},
-               {"...\t\t\t": ""}
+               {"...\t\t\t": "..."}
             ]
             }
          ]}
       ]},
-      {"Term2\t": []},
-      {"SkipList2\t": []},
-      {"...\t\t": []}
+      {"Term2\t": ["..."]},
+      {"SkipList2\t": ["..."]},
+      {"...\t\t": ["..."]}
     ]},
     {"FieldB\t":["..."]},
     {"...\t\t":["..."]}

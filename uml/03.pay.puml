@@ -1,0 +1,51 @@
+1. .pay文件
+    pay文件保存term的payload，offset信息。注意payload只保存packed block（即每128个），不满128的payload，offset保存在pos文件中。
+
+@startuml
+json ".pay File Layout" as J {
+   "Header":[
+      {"HeaderMagic[Int]\t": "0x3fd76c17"},
+      {"Codec[String]\t\t": "Lucene90PostingsWriterPay"},
+      {"Version[Int]\t\t": "0"},
+      {"Id[16 bytes]\t\t": "random id"},
+      {"SuffixLength[byte]\t": "0x0A"},
+      {"Suffix[bytes]\t\t": "Lucene90_0"}
+   ],
+   "Content":[
+    {"FieldA\t": [
+      {"Term1\t": [
+         {"PackedBlock\t":[
+            {"PackedPayloadLenBlock\t":[
+               {"Token\t\t": "(numEs << 5) | bitsRequired"},
+               {"payloadLens\t": "bit packing"},
+               {"Exceptions\t": "(eIdx, eInc) * numEs"}
+            ]},
+            {"SumPayloadLen": "[VInt]"},
+            {"PayloadBytes": "[bytes]"},
+            {"PackedOffsetStartDeltaBlock\t\t":[
+              {"Token\t\t": "(numEs << 5) | bitsRequired"},
+              {"Freqs\t\t": "bit packing"},
+              {"Exceptions\t": "(eIdx, eInc) * numEs"}
+            ]},
+            {"PackedOffsetLenBlock\t\t":[
+              {"Token\t\t": "(numEs << 5) | bitsRequired"},
+              {"Freqs\t\t": "bit packing"},
+              {"Exceptions\t": "(eIdx, eInc) * numEs"}
+            ]}
+         ]},
+         {"PackedBlock\t":["..."]},
+         {"...\t\t\t":[]}
+      ]},
+      {"Term2\t": []},
+      {"...\t\t": []}
+    ]},
+    {"FieldB\t":["..."]},
+    {"...\t\t":["..."]}
+   ],
+   "Footer":[
+      {"FooterMagic[Int]\t": "0xc02893e8"},
+      {"Zero[Int]\t\t\t": "0"},
+      {"CRC[Long]\t\t": "crc"}
+   ]
+}
+@enduml
