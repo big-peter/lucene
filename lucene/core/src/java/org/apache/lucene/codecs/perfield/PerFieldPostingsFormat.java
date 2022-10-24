@@ -245,6 +245,7 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
           }
           suffixes.put(formatName, suffix);
 
+          // 生成segment suffix
           String segmentSuffix =
               getFullSegmentSuffix(
                   field, writeState.segmentSuffix, getSuffix(formatName, Integer.toString(suffix)));

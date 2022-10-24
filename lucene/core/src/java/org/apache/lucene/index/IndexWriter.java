@@ -3178,6 +3178,7 @@ public class IndexWriter
               false,
               codec,
               Collections.emptyMap(),
+              // 生成随机ID
               StringHelper.randomId(),
               Collections.emptyMap(),
               config.getIndexSort());
