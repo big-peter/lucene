@@ -34,13 +34,13 @@ json ".pay File Layout" as J {
             ]}
          ]},
          {"PackedBlock\t":["..."]},
-         {"...\t\t\t":[]}
+         "..."
       ]},
       {"Term2\t": []},
-      {"...\t\t": []}
+      "..."
     ]},
     {"FieldB\t":["..."]},
-    {"...\t\t":["..."]}
+    "..."
    ],
    "Footer":[
       {"FooterMagic\t": "[Int] 0xc02893e8"},

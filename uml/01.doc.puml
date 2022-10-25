@@ -3,6 +3,8 @@
 VInt Block处理，即每处理128个文档，就将docId，freq数组打包成一个Packed Block，或每处理128个Prox，就将pos, payloadLen, payloadBytes,
 offsetStart, offsetLength数组打包成一个PackedBlock。如果不足128个，就用VInt Block保存。这种方式保存这些数据主要是为了数据压缩，节省空间。
     payload, offset如果可以packed block，会保存在.pay文件。否则，以VInt Block的形式保存在.pos文件中。
+    doc,pos,pay在field之间，以及term之间没有保存分割标志，每个field，term的开始fp保存在tim文件中。所以在读取阶段，先通过读取索引文件.tim来
+得到在索引文件.doc,.pos,.pay的信息。
     详见Lucene90PostingsFormat类文档。
     注意：doc文件处理了128个doc可以packed block时，pos，pay文件不一定可以packed block。
 
@@ -67,14 +69,14 @@ json ".doc File Layout" as J {
             ]}
          ]},
          {"PackedBlock\t":["..."]},
-         {"...\t\t\t":["..."]},
+         "...",
          {"VIntBlock\t\t":[
             {"VIntDocFreqBlock\t\t": [
                {"DocFreqPair\t": [
                   "[VInt] DocDeltaCode\t\t\t\t",
                   "[VInt] Freq"
                ]},
-               {"...\t\t\t": ["..."]}
+               "..."
             ]}
          ]}
       ]},
@@ -92,12 +94,12 @@ json ".doc File Layout" as J {
                   "[Bytes] freqNorm",
                   "[VLong] childPointer"
                ]},
-               {"...\t\t\t": "..."}
+               "..."
             ]
             }
          ]},
          {"Level_n-1\t": ["..."]},
-         {"...\t\t\t": ["..."]},
+         "...",
          {"Level_0\t\t": [
             {"skipDatas\t\t\t":[
                {"skipData\t\t":[
@@ -109,17 +111,17 @@ json ".doc File Layout" as J {
                   "[VLong] payFPSkip",
                   "[Bytes] freqNorm"
                ]},
-               {"...\t\t\t": "..."}
+               "..."
             ]
             }
          ]}
       ]},
       {"Term2\t": ["..."]},
       {"SkipList2\t": ["..."]},
-      {"...\t\t": ["..."]}
+      "..."
     ]},
     {"FieldB\t":["..."]},
-    {"...\t\t":["..."]}
+    "..."
    ],
    "Footer":[
       {"FooterMagic\t": "[Int] 0xc02893e8"},

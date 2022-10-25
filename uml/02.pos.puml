@@ -22,7 +22,7 @@ json ".pos File Layout" as J {
             ]}
          ]},
          {"PackedBlock\t":["..."]},
-         {"...\t\t\t":["..."]},
+         "...",
          {"VIntBlock\t\t":[
             {"VIntProxBlock\t\t\t": [
                {"ProxTuple\t":[
@@ -32,15 +32,15 @@ json ".pos File Layout" as J {
                   "[VInt] offsetStartDeltaCode\t\t\t",
                   "[VInt] offsetLength"
                ]},
-               {"...\t\t\t":["..."]}
+               "..."
             ]}
          ]}
       ]},
       {"Term2\t": ["..."]},
-      {"...\t\t": ["..."]}
+      "..."
     ]},
     {"FieldB\t":["..."]},
-    {"...\t\t":["..."]}
+    "..."
    ],
    "Footer":[
       {"FooterMagic\t": "[Int] 0xc02893e8"},
