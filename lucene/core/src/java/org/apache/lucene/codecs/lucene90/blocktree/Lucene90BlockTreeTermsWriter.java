@@ -789,7 +789,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
      * the same prefix, and so we broke it into multiple floor blocks where we record the starting
      * label of the suffix of each floor block.
      */
-    // 写.tim文件，并生成PendingBlock
+    // 按PendingBlock写.tim文件，并生成PendingBlock
     // 对比另一个重载方法，该方法主要是收集信息写入tim文件，然后将pending[start, end)间的pendingEntry生成PendingBlock
     private PendingBlock writeBlock(
         int prefixLength,
