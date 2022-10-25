@@ -1,36 +1,9 @@
-1. .tim文件
-    索引文件.tim又称为 Term Dictionary，保存term后缀，term统计（docFreq，totalTermFreq），term元数据（该term在doc，pos，pay文件开始的FP，
-以及pos文件中VInt Block开始的FP，doc中skipList开始的offset）。所以在读取阶段，我们是先通过读取索引文件.tim来得到在索引文件.doc、.pos、pay的信息。
-    注意term文件中按Field保存，每个Field中按PendingBlock(pendingBlock中的项有相同的前缀)保存数据，除了最后一个pendingBlock，其他的pendingBlock至少
-包含25个词项(或sub pendingBlock)，最多不超过48个。设置最小值是为了防止频繁从磁盘加载pendingBlock，设置最大值是为了查询时减少从磁盘加载的数据量。
-    注意只有PendingTerm有termStat和termMetaData。
-
-2. 压缩
-    如果平均后缀长度大于2且公共前缀长度大于2，会对后缀字节数组进行压缩。
-    如果平均后缀长度大于2，会先尝试用LZ4压缩算法压缩，如果压缩后大小小于原来的3/4，压缩成功；否则，尝试下面的步骤。
-    如果LZ4没有压缩成功，尝试用LowercaseAsciiCompression算法压缩（该算法对[0x1F,0x3F) or [0x5F,0x7F) 范围，即[31, 63)或[95, 127), 包含所有的数字，小写
-字母，点，中划线和下划线, 压缩效果非常好）。如果压缩成功，保存；否则，使用原后缀字节数组。
-
-3. SingletonDocId
-    termStats中会保存singletonCount。
-    termMetadata中会保存singletonCount。
-
-4. termMetadata
-    lastPosBlockOffset: prox个数不是128的倍数，最后一部分会使用VIntBlock保存在pos文件中，保存lastPosBlockOffset指向VIntBlock开始的FP
-
-5. outerNode VS innerNode
-    outerNode指只包含pendingTerm的PendingBlock，innerNode指至少包含一个pendingBlock的pendingBlock。
-    innerNode中的PendingBlock不会保存termStats和termMetadata，会在SuffixLength中保存跳转到对应block的offset。
-    通过Token区分是outerNode，innerNode
-
-6. 优化点
-    保存suffixLength时，如果所有的suffixLength都相等(不超过1byte)，只会保存第一个byte。【针对结构化数据，比如id】
 
 @startuml
-json ".tim File Layout" as J {
+json ".tip File Layout" as J {
    "Header":[
       {"HeaderMagic\t": "[Int] 0x3fd76c17"},
-      {"Codec\t\t": "[String] BlockTreeTermsDict"},
+      {"Codec\t\t": "[String] BlockTreeTermsIndex"},
       {"Version\t\t": "[Int] 0"},
       {"Id\t\t\t": "[16 Bytes] random id"},
       {"SuffixLength\t": "[Byte] 0x0A"},

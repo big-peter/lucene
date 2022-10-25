@@ -1,5 +1,5 @@
 1. .pos文件
-    pos文件主要保存term的position信息，对于不满128的payload，offset信息，也保存在pos文件中。
+    pos文件保存term的position信息，对于不满128的payload，offset信息，也保存在pos文件中。
 
 @startuml
 json ".pos File Layout" as J {

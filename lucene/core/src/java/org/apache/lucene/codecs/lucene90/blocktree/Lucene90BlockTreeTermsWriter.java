@@ -492,7 +492,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       // TODO: try writing the leading vLong in MSB order
       // (opposite of what Lucene does today), for better
       // outputs sharing in the FST
-      // 将该block的fp，hasTerms, isFloor编码后写入scratchBytes。fp<<2 | hasTerms | isFloor.
+      // 将该block的fp，hasTerms, isFloor编码后写入scratchBytes。fpDelta<<2 | hasTerms | isFloor.
       scratchBytes.writeVLong(encodeOutput(fp, hasTerms, isFloor));
 
       // floor block，特殊处理。保存sub.floorLeadByte，sub.fp, sub.hasTerms
@@ -1064,7 +1064,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
       //   System.out.println("      fpEnd=" + out.getFilePointer());
       // }
 
-      // 处理flootLeadLabel
+      // 处理floorLeadLabel
       if (hasFloorLeadLabel) {
         // We already allocated to length+1 above:
         prefix.bytes[prefix.length++] = (byte) floorLeadLabel;
@@ -1196,14 +1196,14 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         // Arrays.toString(prefixStarts));
 
         // Add empty term to force closing of all final blocks:
-        // 确定所有相同前缀（长度从最长到1）满足条件的entry都已合并成PendingBlock
+        // 确定所有相同前缀（长度从最长到0）满足条件的entry都已合并成PendingBlock
         pushTerm(new BytesRef());
 
         // TODO: if pending.size() is already 1 with a non-zero prefix length
         // we can save writing a "degenerate" root block, but we have to
         // fix all the places that assume the root block's prefix is the empty string:
         pushTerm(new BytesRef());
-        // 将term栈中剩余未处理的PendingEntry生成NodeBlock。至此所有的PendingEntry会生成一个PendingBlock
+        // 将term栈中剩余未处理的PendingEntry生成PendingBlock。至此所有的PendingEntry会生成一个PendingBlock
         writeBlocks(0, pending.size());
 
         // We better have one final "root" block:
