@@ -313,10 +313,10 @@ public class FSTCompiler<T> {
         && (doShareNonSingletonNodes || nodeIn.numArcs <= 1)
         && tailLength <= shareMaxTailLength) {
       if (nodeIn.numArcs == 0) {
-        node = fst.addNode(this, nodeIn);
+        node = fst.addNode(this, nodeIn);  // encode
         lastFrozenNode = node;
       } else {
-        node = dedupHash.add(this, nodeIn);
+        node = dedupHash.add(this, nodeIn);  // 处理相同后缀
       }
     } else {
       node = fst.addNode(this, nodeIn);
@@ -348,6 +348,7 @@ public class FSTCompiler<T> {
       final UnCompiledNode<T> node = frontier[idx];
       final UnCompiledNode<T> parent = frontier[idx - 1];
 
+      // determine prune，compile
       if (node.inputCount < minSuffixCount1) {
         doPrune = true;
         doCompile = true;
@@ -417,7 +418,7 @@ public class FSTCompiler<T> {
           // undecided:
           parent.replaceLast(
               lastInput.intAt(idx - 1),
-              compileNode(node, 1 + lastInput.length() - idx),
+              compileNode(node, 1 + lastInput.length() - idx),  // 生成CompiledNode
               nextFinalOutput,
               isFinal);
         } else {
@@ -491,6 +492,7 @@ public class FSTCompiler<T> {
       return;
     }
 
+    // 1. 找到上一个输入与当前输入不相同的Node节点
     // compare shared prefix length
     int pos1 = 0;
     int pos2 = input.offset;
@@ -507,6 +509,7 @@ public class FSTCompiler<T> {
     }
     final int prefixLenPlus1 = pos1 + 1;
 
+    // frontier扩容
     if (frontier.length < input.length + 1) {
       final UnCompiledNode<T>[] next = ArrayUtil.grow(frontier, input.length + 1);
       for (int idx = frontier.length; idx < next.length; idx++) {
@@ -515,12 +518,15 @@ public class FSTCompiler<T> {
       frontier = next;
     }
 
+    // 2. 将不相同Node节点中的所有arc的四元组信息写入到current[]数组中
     // minimize/compile states from previous input's
     // orphan'd suffix
     freezeTail(prefixLenPlus1);
 
+    // 3. 将当前输入写入到frontier[]数组中
     // init tail states for current input
     for (int idx = prefixLenPlus1; idx <= input.length; idx++) {
+      // 从公共前缀末尾节点开始创建arc
       frontier[idx - 1].addArc(input.ints[input.offset + idx - 1], frontier[idx]);
       frontier[idx].inputCount++;
     }
@@ -531,6 +537,7 @@ public class FSTCompiler<T> {
       lastNode.output = NO_OUTPUT;
     }
 
+    // 4. 处理上一个输入与当前输入相同的前缀值，调整output值。
     // push conflicting outputs forward, only as far as
     // needed
     for (int idx = 1; idx < prefixLenPlus1; idx++) {
@@ -544,21 +551,21 @@ public class FSTCompiler<T> {
       final T wordSuffix;
 
       if (lastOutput != NO_OUTPUT) {
-        commonOutputPrefix = fst.outputs.common(output, lastOutput);
+        commonOutputPrefix = fst.outputs.common(output, lastOutput);  // common/min操作
         assert validOutput(commonOutputPrefix);
-        wordSuffix = fst.outputs.subtract(lastOutput, commonOutputPrefix);
+        wordSuffix = fst.outputs.subtract(lastOutput, commonOutputPrefix);  // subtract操作
         assert validOutput(wordSuffix);
-        parentNode.setLastOutput(input.ints[input.offset + idx - 1], commonOutputPrefix);
-        node.prependOutput(wordSuffix);
+        parentNode.setLastOutput(input.ints[input.offset + idx - 1], commonOutputPrefix);  // 设置公共的arc的output
+        node.prependOutput(wordSuffix);  // 将余量加到子节点的每个出箭头上
       } else {
         commonOutputPrefix = wordSuffix = NO_OUTPUT;
       }
 
-      output = fst.outputs.subtract(output, commonOutputPrefix);
+      output = fst.outputs.subtract(output, commonOutputPrefix);  // 更新output
       assert validOutput(output);
     }
 
-    if (lastInput.length() == input.length && prefixLenPlus1 == 1 + input.length) {
+    if (lastInput.length() == input.length && prefixLenPlus1 == 1 + input.length) {  // lastInput和input相同
       // same input more than 1 time in a row, mapping to
       // multiple outputs
       lastNode.output = fst.outputs.merge(lastNode.output, output);
@@ -628,7 +635,7 @@ public class FSTCompiler<T> {
     int label; // really an "unsigned" byte
     Node target;
     boolean isFinal;
-    T output;
+    T output;  // 该arc的output/weight
     T nextFinalOutput;
   }
 
@@ -662,8 +669,9 @@ public class FSTCompiler<T> {
     // node, maybe we should use -1 arc to mean "end" (like
     // we do when reading the FST).  Would simplify much
     // code here...
-    T output;
+    T output;  // end node的输出
     boolean isFinal;
+    // 输入arc的个数
     long inputCount;
 
     /** This node's depth, starting from the automaton root. */
@@ -756,7 +764,7 @@ public class FSTCompiler<T> {
       assert owner.validOutput(outputPrefix);
 
       for (int arcIdx = 0; arcIdx < numArcs; arcIdx++) {
-        arcs[arcIdx].output = owner.fst.outputs.add(outputPrefix, arcs[arcIdx].output);
+        arcs[arcIdx].output = owner.fst.outputs.add(outputPrefix, arcs[arcIdx].output);  // add操作
         assert owner.validOutput(arcs[arcIdx].output);
       }
 
