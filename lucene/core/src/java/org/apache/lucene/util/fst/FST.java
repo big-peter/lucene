@@ -526,10 +526,12 @@ public final class FST<T> implements Accountable {
     }
   }
 
+  // out-index output
   public void save(DataOutput metaOut, DataOutput out) throws IOException {
     if (startNode == -1) {
       throw new IllegalStateException("call finish first");
     }
+    // 向metaOut写入header
     CodecUtil.writeHeader(metaOut, FILE_FORMAT_NAME, VERSION_CURRENT);
     // TODO: really we should encode this as an arc, arriving
     // to the root node, instead of special casing here:
@@ -570,7 +572,7 @@ public final class FST<T> implements Accountable {
     if (bytes != null) {
       long numBytes = bytes.getPosition();
       metaOut.writeVLong(numBytes);
-      bytes.writeTo(out);
+      bytes.writeTo(out); // 将bytes写入.tip文件
     } else {
       assert fstStore != null;
       fstStore.writeTo(out);
@@ -594,7 +596,7 @@ public final class FST<T> implements Accountable {
   }
 
   private void writeLabel(DataOutput out, int v) throws IOException {
-    assert v >= 0 : "v=" + v;
+    assert v >= 0 : "v=" + v;  // inputType表示label用几个字节表示
     if (inputType == INPUT_TYPE.BYTE1) {
       assert v <= 255 : "v=" + v;
       out.writeByte((byte) v);
@@ -632,7 +634,7 @@ public final class FST<T> implements Accountable {
 
   // serializes new node by appending its bytes to the end
   // of the current byte[]
-  long addNode(FSTCompiler<T> fstCompiler, FSTCompiler.UnCompiledNode<T> nodeIn)
+  long addNode(FSTCompiler<T> fstCompiler, FSTCompiler.UnCompiledNode<T> nodeIn)  // 返回bytes中的index
       throws IOException {
     T NO_OUTPUT = outputs.getNoOutput();
 
@@ -700,7 +702,7 @@ public final class FST<T> implements Accountable {
         flags += BIT_ARC_HAS_OUTPUT;
       }
 
-      fstCompiler.bytes.writeByte((byte) flags);
+      fstCompiler.bytes.writeByte((byte) flags);  // 写flag
       long labelStart = fstCompiler.bytes.getPosition();
       writeLabel(fstCompiler.bytes, arc.label);
       int numLabelBytes = (int) (fstCompiler.bytes.getPosition() - labelStart);
@@ -710,13 +712,13 @@ public final class FST<T> implements Accountable {
       // outputs.outputToString(arc.output));
 
       if (arc.output != NO_OUTPUT) {
-        outputs.write(arc.output, fstCompiler.bytes);
+        outputs.write(arc.output, fstCompiler.bytes);  // 写output
         // System.out.println("    write output");
       }
 
       if (arc.nextFinalOutput != NO_OUTPUT) {
         // System.out.println("    write final output");
-        outputs.writeFinalOutput(arc.nextFinalOutput, fstCompiler.bytes);
+        outputs.writeFinalOutput(arc.nextFinalOutput, fstCompiler.bytes);  // 写nextFinalOutput
       }
 
       if (targetHasArcs && (flags & BIT_TARGET_NEXT) == 0) {
@@ -777,7 +779,7 @@ public final class FST<T> implements Accountable {
     }
 
     final long thisNodeAddress = fstCompiler.bytes.getPosition() - 1;
-    fstCompiler.bytes.reverse(startAddress, thisNodeAddress);
+    fstCompiler.bytes.reverse(startAddress, thisNodeAddress); // 写入顺序flag,label。反转之，label，flag。
     fstCompiler.nodeCount++;
     return thisNodeAddress;
   }
@@ -790,7 +792,7 @@ public final class FST<T> implements Accountable {
    * number of bytes, but they allow either binary search or direct addressing on the arcs (instead
    * of linear scan) on lookup by arc label.
    */
-  private boolean shouldExpandNodeWithFixedLengthArcs(
+  private boolean shouldExpandNodeWithFixedLengthArcs(  // 紧密编码还是定长编码
       FSTCompiler<T> fstCompiler, FSTCompiler.UnCompiledNode<T> node) {
     return fstCompiler.allowFixedLengthArcs
         && ((node.depth <= FIXED_LENGTH_ARC_SHALLOW_DEPTH
@@ -1149,7 +1151,7 @@ public final class FST<T> implements Accountable {
     in.setPosition(nodeAddress);
     // System.out.println("   flags=" + arc.flags);
 
-    byte flags = arc.nodeFlags = in.readByte();
+    byte flags = arc.nodeFlags = in.readByte();  // 读取flag
     if (flags == ARCS_FOR_BINARY_SEARCH || flags == ARCS_FOR_DIRECT_ADDRESSING) {
       // System.out.println("  fixed length arc");
       // Special arc which is actually a node header for fixed length arcs.

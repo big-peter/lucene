@@ -1,5 +1,5 @@
-1. .tim文件
-    索引文件.tim又称为 Term Dictionary，保存term后缀，term统计（docFreq，totalTermFreq），term元数据（该term在doc，pos，pay文件开始的FP，
+1. .tim文件（term dictionary, 词项字典）
+    .tim文件保存term后缀，term统计（docFreq，totalTermFreq），term元数据（该term在doc，pos，pay文件开始的FP，
 以及pos文件中VInt Block开始的FP，doc中skipList开始的offset）。所以在读取阶段，我们是先通过读取索引文件.tim来得到在索引文件.doc、.pos、pay的信息。
     注意term文件中按Field保存，每个Field中按PendingBlock(pendingBlock中的项有相同的前缀)保存数据，除了最后一个pendingBlock，其他的pendingBlock至少
 包含25个词项(或sub pendingBlock)，最多不超过48个。设置最小值是为了防止频繁从磁盘加载pendingBlock，设置最大值是为了查询时减少从磁盘加载的数据量。
@@ -44,16 +44,16 @@ json ".tim File Layout" as J {
                {"EntryCountCode\t": "[VInt] EntryCountCode << 1 | 1 if isLast else 0"},
                {"Token\t\t\t": "[VLong] sumSuffixBytesLen << 3 | 0x04 if outerNode else 0 | compressionAlg.code"},
                {"SuffixBytes [Bytes]\t": [
-                  "term1Suffix",
-                  "term2Suffix",
-                  "..."
+                  {"term1Suffix\t":[]},
+                  {"term2Suffix\t":[]},
+                  {"...\t\t\t":[]}
                ]},
                {"SuffixLengths\t\t": [
-                  {"SuffixLengthsLen\t\t": "[VInt] len << 1 | 1 if allByteEqual else 0"},
+                  {"SuffixLengthsLen\t\t": {"[VInt] len << 1 | 1 if allByteEqual else 0":[]}},
                   {"SuffixLengths [VInts]\t": [
-                     "term1SuffixLen",
-                     "term2SuffixLen",
-                     "..."
+                     {"term1SuffixLen\t":[]},
+                     {"term2SuffixLen\t":[]},
+                     {"...\t\t\t\t":[]}
                   ]}
                ]},
                {"TermStats\t\t": [
@@ -65,12 +65,12 @@ json ".tim File Layout" as J {
                      ]},
                      {"term2Stat\t\t": [
                         {"docFreq\t\t\t": "[VInt] df << 1"},
-                        {"totalTermFreq\t": "[VLong] ttf - df"}
+                        {"totalTermFreq\t": "[VLong] ttf - df\t"}
                      ]},
                      {"singletonCount\t": "[VInt] ((singletonCount - 1) << 1) | 1"},
                      {"term5Stat\t\t": [
                         {"docFreq\t\t\t": "[VInt] df << 1"},
-                        {"totalTermFreq\t": "[VLong] ttf - df"}
+                        {"totalTermFreq\t": "[VLong] ttf - df\t"}
                      ]},
                      "..."
                   ]}
@@ -80,7 +80,7 @@ json ".tim File Layout" as J {
                   {"TermMetadatas\t\t": [
                      {"term1Meta\t": [
                         {"docStartFP\t\t": "[VLong] delta"},
-                        {"SingletonDocId\t": "[VInt] optional\t"},
+                        {"SingletonDocId\t": "[VInt] optional\t\t"},
                         {"posStartFP\t\t": "[VLong] delta"},
                         {"payStartFP\t\t": "[VLong] delta"},
                         {"lastPosBlockOffset\t": "[VLong]"},
@@ -88,7 +88,7 @@ json ".tim File Layout" as J {
                      ]},
                      {"term2Meta\t": [
                         {"docStartFP\t\t": "[VLong] delta"},
-                        {"SingletonDocId\t": "[VInt] optional\t"},
+                        {"SingletonDocId\t": "[VInt] optional\t\t"},
                         {"posStartFP\t\t": "[VLong] delta"},
                         {"payStartFP\t\t": "[VLong] delta"},
                         {"lastPosBlockOffset\t": "[VLong]"},
@@ -102,21 +102,21 @@ json ".tim File Layout" as J {
                {"EntryCountCode\t": "[VInt] EntryCountCode << 1 | 1 if isLast else 0"},
                {"Token\t\t\t": "[VLong] sumSuffixBytesLen << 3 | 0x04 if outerNode else 0 | compressionAlg.code"},
                {"SuffixBytes [Bytes]\t": [
-                  "term1Suffix",
-                  "term2Suffix",
-                  "block1Suffix",
-                  "term3Suffix",
-                  "..."
+                  {"term1Suffix\t":[]},
+                  {"term2Suffix\t":[]},
+                  {"block1Suffix\t":[]},
+                  {"term3Suffix\t":[]},
+                  {"...\t\t\t":[]}
                ]},
                {"SuffixLengths\t\t": [
-                  {"SuffixLengthsLen\t\t": "[VInt] len << 1 | 1 if allByteEqual else 0"},
+                  {"SuffixLengthsLen\t\t": {"[VInt] len << 1 | 1 if allByteEqual else 0\t\t  ":[]}},
                   {"SuffixLengths [VInts]\t": [
-                     {"term1SuffixLen\t": "term1SuffixLen << 1"},
-                     {"term2SuffixLen\t": "term2SuffixLen << 1"},
-                     {"block1SuffixLen\t": "block1SuffixLen << 1 | 1"},
-                     {"block1_Offset\t\t": "startFP - block.fp"},
-                     {"term3SuffixLen\t": "term3SuffixLen << 1"},
-                     "..."
+                     {"term1SuffixLen\t": {"term1SuffixLen << 1\t\t":[]}},
+                     {"term2SuffixLen\t": {"term2SuffixLen << 1\t\t":[]}},
+                     {"block1SuffixLen\t": {"block1SuffixLen << 1 | 1\t":[]}},
+                     {"block1_Offset\t\t": {"startFP - block.fp\t\t\t":[]}},
+                     {"term3SuffixLen\t": {"term3SuffixLen << 1\t\t":[]}},
+                     {"...\t\t\t\t\t\t\t\t\t\t  ":[]}
                   ]}
                ]},
                {"TermStats\t\t": [
@@ -128,16 +128,16 @@ json ".tim File Layout" as J {
                      ]},
                      {"term2Stat\t\t": [
                         {"docFreq\t\t\t": "[VInt] df << 1"},
-                        {"totalTermFreq\t": "[VLong] ttf - df"}
+                        {"totalTermFreq\t": "[VLong] ttf - df\t"}
                      ]},
                      {"term3Stat\t\t": [
                         {"docFreq\t\t\t": "[VInt] df << 1"},
-                        {"totalTermFreq\t": "[VLong] ttf - df"}
+                        {"totalTermFreq\t": "[VLong] ttf - df\t"}
                      ]},
                      {"singletonCount\t": "[VInt] ((singletonCount - 1) << 1) | 1"},
                      {"term7Stat\t\t": [
                         {"docFreq\t\t\t": "[VInt] df << 1"},
-                        {"totalTermFreq\t": "[VLong] ttf - df"}
+                        {"totalTermFreq\t": "[VLong] ttf - df\t"}
                      ]},
                      "..."
                   ]}
@@ -147,7 +147,7 @@ json ".tim File Layout" as J {
                   {"TermMetadatas\t\t": [
                      {"term1Meta\t": [
                         {"docStartFP\t\t": "[VLong] delta"},
-                        {"SingletonDocId\t": "[VInt] optional\t"},
+                        {"SingletonDocId\t": "[VInt] optional\t\t"},
                         {"posStartFP\t\t": "[VLong] delta"},
                         {"payStartFP\t\t": "[VLong] delta"},
                         {"lastPosBlockOffset\t": "[VLong]"},
@@ -155,7 +155,7 @@ json ".tim File Layout" as J {
                      ]},
                      {"term2Meta\t": [
                         {"docStartFP\t\t": "[VLong] delta"},
-                        {"SingletonDocId\t": "[VInt] optional\t"},
+                        {"SingletonDocId\t": "[VInt] optional\t\t"},
                         {"posStartFP\t\t": "[VLong] delta"},
                         {"payStartFP\t\t": "[VLong] delta"},
                         {"lastPosBlockOffset\t": "[VLong]"},
@@ -163,7 +163,7 @@ json ".tim File Layout" as J {
                      ]},
                      {"term3Meta\t": [
                         {"docStartFP\t\t": "[VLong] delta"},
-                        {"SingletonDocId\t": "[VInt] optional\t"},
+                        {"SingletonDocId\t": "[VInt] optional\t\t"},
                         {"posStartFP\t\t": "[VLong] delta"},
                         {"payStartFP\t\t": "[VLong] delta"},
                         {"lastPosBlockOffset\t": "[VLong]"},

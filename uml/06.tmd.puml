@@ -1,0 +1,65 @@
+1. tmd文件（term metadata, 词项元数据文件）
+    tmd文件保存tip文件中FST的元数据，以及字段级别统计数据。
+
+@startuml
+json ".tmd File Layout" as J {
+   "Header":[
+      {"HeaderMagic\t\t": "[Int] 0x3fd76c17"},
+      {"Codec\t\t\t": "[String] BlockTreeTermsMeta"},
+      {"Version\t\t\t": "[Int] 0"},
+      {"Id\t\t\t\t": "[16 Bytes] random id"},
+      {"SuffixLength\t\t": "[Byte] 0x0A"},
+      {"Suffix\t\t\t": "[Bytes] Lucene90_0"}
+   ],
+   "Content":[
+      {"FieldNum\t": "[VInt]"},
+      {"Fields\t\t": [
+          {"FieldA\t": [
+             {"FieldMeta": [
+                {"FieldNO\t\t\t": "[VInt]"},
+                {"NumTerms\t\t": "[VLong]"},
+                {"RootCodeLength\t": "[VInt]"},
+                {"RootCode\t\t": "[Bytes]"},
+                {"TotalTermFreq\t": "[VLong] Optional"},
+                {"TotalDocFreq\t\t": "[VLong]"},
+                {"DocsCardinality\t": "[VInt]"},
+                {"StartTerm\t\t": {
+                    "Length\t\t": {"[VInt]\t\t":[]},
+                    "Content\t\t": {"[Bytes]\t\t":[]}
+                }},
+                {"EndTerm\t\t\t": {
+                    "Length\t\t": {"[VInt]\t\t":[]},
+                    "Content\t\t": {"[Bytes]\t\t":[]}
+                }},
+                {"IndexFP\t\t\t": "[VLong]"},
+                {"FSTInfo\t\t\t": {
+                    "Header\t":[
+                        {"HeaderMagic\t": "[Int] 0x3fd76c17"},
+                        {"Codec\t\t": "[String] FST"},
+                        {"Version\t\t": "[Int] 8"}
+                    ],
+                    "EmptyOutput\t":[
+                        {"Marker\t\t": "[Byte] 0 or 1"},
+                        {"EmptyLen\t": "[VInt] Optional"},
+                        {"EmptyOutput\t": "[Bytes] Optional"}
+                    ],
+                    "InputType\t": "[Byte]",
+                    "StartNode\t": "[VLong]",
+                    "FstLength\t": "[VLong] Optional"
+                }},
+                "..."
+             ]}
+          ]},
+          {"FieldB\t":["..."]},
+          "..."
+      ]},
+      {"IndexFP\t\t": "[Long]"},
+      {"TermFP\t\t": "[Long]"}
+   ],
+   "Footer":[
+      {"FooterMagic\t": "[Int] 0xc02893e8"},
+      {"Zero\t\t\t": "[Int] 0"},
+      {"CRC\t\t\t": "[Long] crc"}
+   ]
+}
+@enduml

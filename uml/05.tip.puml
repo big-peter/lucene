@@ -1,3 +1,16 @@
+1. tip文件（term index, 词项索引文件）
+    tip文件主要按Field保存term的FST序列化后信息。每个Field最后会生成一个PendingBlock，包含一个FST，可以认为保存了 prefix -> [fp, hasTerms, isFloor]
+的映射(虽然PendingBlock是树形的，但是FST中的映射都是平级的)，只是对比hashtable，其可以共用前缀和后缀，节省空间。其中fp指向tim文件中该pendingBlock开始
+的FilePointer。后缀信息保存在tim文件中。
+
+2. FST
+    a. 为什么要求input有序
+        input有序的情况下，当加入一个新key时，可以先求出新加的key和上一次输入的key的公共前缀，然后将将上一次输入的key除公共前缀的部分存入文件中。如果
+input无序，首先获取公共前缀比较困难，需要和之前所有的key比较；其次所有的拓扑接口必须保存在内存中，因为无法保证下一个key不会改变之前的拓扑结构，这样对
+内存的要求比较高(虽然可以用swap的思路，但这样效率会很低)。
+
+3. FST编码后结构
+    后面会解析
 
 @startuml
 json ".tip File Layout" as J {
@@ -11,142 +24,9 @@ json ".tip File Layout" as J {
    ],
    "Content":[
       {"FieldA\t": [
-         {"PostingsHeader\t": "..."},
-         {"NodeBlocks\t\t": [
-            {"OuterNode\t": [
-               {"EntryCountCode\t": "[VInt] EntryCountCode << 1 | 1 if isLast else 0"},
-               {"Token\t\t\t": "[VLong] sumSuffixBytesLen << 3 | 0x04 if outerNode else 0 | compressionAlg.code"},
-               {"SuffixBytes [Bytes]\t": [
-                  "term1Suffix",
-                  "term2Suffix",
-                  "..."
-               ]},
-               {"SuffixLengths\t\t": [
-                  {"SuffixLengthsLen\t\t": "[VInt] len << 1 | 1 if allByteEqual else 0"},
-                  {"SuffixLengths [VInts]\t": [
-                     "term1SuffixLen",
-                     "term2SuffixLen",
-                     "..."
-                  ]}
-               ]},
-               {"TermStats\t\t": [
-                  {"TermStatsLen\t\t\t": "[VInt]"},
-                  {"TermStats\t\t\t": [
-                     {"term1Stat\t\t": [
-                        {"docFreq\t\t\t": "[VInt] df << 1"},
-                        {"totalTermFreq\t": "[VLong] ttf - df\t"}
-                     ]},
-                     {"term2Stat\t\t": [
-                        {"docFreq\t\t\t": "[VInt] df << 1"},
-                        {"totalTermFreq\t": "[VLong] ttf - df"}
-                     ]},
-                     {"singletonCount\t": "[VInt] ((singletonCount - 1) << 1) | 1"},
-                     {"term5Stat\t\t": [
-                        {"docFreq\t\t\t": "[VInt] df << 1"},
-                        {"totalTermFreq\t": "[VLong] ttf - df"}
-                     ]},
-                     "..."
-                  ]}
-               ]},
-               {"TermMetadatas\t": [
-                  {"MetadataSize\t\t\t": "[VInt]"},
-                  {"TermMetadatas\t\t": [
-                     {"term1Meta\t": [
-                        {"docStartFP\t\t": "[VLong] delta"},
-                        {"SingletonDocId\t": "[VInt] optional\t"},
-                        {"posStartFP\t\t": "[VLong] delta"},
-                        {"payStartFP\t\t": "[VLong] delta"},
-                        {"lastPosBlockOffset\t": "[VLong]"},
-                        {"skipOffset\t\t": "[VLong]"}
-                     ]},
-                     {"term2Meta\t": [
-                        {"docStartFP\t\t": "[VLong] delta"},
-                        {"SingletonDocId\t": "[VInt] optional\t"},
-                        {"posStartFP\t\t": "[VLong] delta"},
-                        {"payStartFP\t\t": "[VLong] delta"},
-                        {"lastPosBlockOffset\t": "[VLong]"},
-                        {"skipOffset\t\t": "[VLong]"}
-                     ]},
-                     "..."
-                  ]}
-               ]}
-            ]},
-            {"InnerNode\t": [
-               {"EntryCountCode\t": "[VInt] EntryCountCode << 1 | 1 if isLast else 0"},
-               {"Token\t\t\t": "[VLong] sumSuffixBytesLen << 3 | 0x04 if outerNode else 0 | compressionAlg.code"},
-               {"SuffixBytes [Bytes]\t": [
-                  "term1Suffix",
-                  "term2Suffix",
-                  "block1Suffix",
-                  "term3Suffix",
-                  "..."
-               ]},
-               {"SuffixLengths\t\t": [
-                  {"SuffixLengthsLen\t\t": "[VInt] len << 1 | 1 if allByteEqual else 0"},
-                  {"SuffixLengths [VInts]\t": [
-                     {"term1SuffixLen\t": "term1SuffixLen << 1"},
-                     {"term2SuffixLen\t": "term2SuffixLen << 1"},
-                     {"block1SuffixLen\t": "block1SuffixLen << 1 | 1"},
-                     {"block1_Offset\t\t": "startFP - block.fp"},
-                     {"term3SuffixLen\t": "term3SuffixLen << 1"},
-                     "..."
-                  ]}
-               ]},
-               {"TermStats\t\t": [
-                  {"TermStatsLen\t\t\t": "[VInt]"},
-                  {"TermStats\t\t\t": [
-                     {"term1Stat\t\t": [
-                        {"docFreq\t\t\t": "[VInt] df << 1"},
-                        {"totalTermFreq\t": "[VLong] ttf - df\t"}
-                     ]},
-                     {"term2Stat\t\t": [
-                        {"docFreq\t\t\t": "[VInt] df << 1"},
-                        {"totalTermFreq\t": "[VLong] ttf - df"}
-                     ]},
-                     {"term3Stat\t\t": [
-                        {"docFreq\t\t\t": "[VInt] df << 1"},
-                        {"totalTermFreq\t": "[VLong] ttf - df"}
-                     ]},
-                     {"singletonCount\t": "[VInt] ((singletonCount - 1) << 1) | 1"},
-                     {"term7Stat\t\t": [
-                        {"docFreq\t\t\t": "[VInt] df << 1"},
-                        {"totalTermFreq\t": "[VLong] ttf - df"}
-                     ]},
-                     "..."
-                  ]}
-               ]},
-               {"TermMetadatas\t": [
-                  {"MetadataSize\t\t\t": "[VInt]"},
-                  {"TermMetadatas\t\t": [
-                     {"term1Meta\t": [
-                        {"docStartFP\t\t": "[VLong] delta"},
-                        {"SingletonDocId\t": "[VInt] optional\t"},
-                        {"posStartFP\t\t": "[VLong] delta"},
-                        {"payStartFP\t\t": "[VLong] delta"},
-                        {"lastPosBlockOffset\t": "[VLong]"},
-                        {"skipOffset\t\t": "[VLong]"}
-                     ]},
-                     {"term2Meta\t": [
-                        {"docStartFP\t\t": "[VLong] delta"},
-                        {"SingletonDocId\t": "[VInt] optional\t"},
-                        {"posStartFP\t\t": "[VLong] delta"},
-                        {"payStartFP\t\t": "[VLong] delta"},
-                        {"lastPosBlockOffset\t": "[VLong]"},
-                        {"skipOffset\t\t": "[VLong]"}
-                     ]},
-                     {"term3Meta\t": [
-                        {"docStartFP\t\t": "[VLong] delta"},
-                        {"SingletonDocId\t": "[VInt] optional\t"},
-                        {"posStartFP\t\t": "[VLong] delta"},
-                        {"payStartFP\t\t": "[VLong] delta"},
-                        {"lastPosBlockOffset\t": "[VLong]"},
-                        {"skipOffset\t\t": "[VLong]"}
-                     ]},
-                     "..."
-                  ]}
-               ]}
-            ]},
-            {"OuterNode\t": "..."},
+         {"FST [Bytes]": [
+            {"Prefix1\t": ["fp", "hasTerms\t", "isFloor"]},
+            {"Prefix2\t": ["fp", "hasTerms\t", "isFloor"]},
             "..."
          ]}
       ]},

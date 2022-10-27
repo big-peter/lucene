@@ -337,6 +337,7 @@ public class FSTCompiler<T> {
     return fn;
   }
 
+  // 将[prefixLenPlus1, lastInput]的arc冻结，即编码写入bytes
   private void freezeTail(int prefixLenPlus1) throws IOException {
     // System.out.println("  compileTail " + prefixLenPlus1);
     final int downTo = Math.max(1, prefixLenPlus1);
@@ -348,7 +349,9 @@ public class FSTCompiler<T> {
       final UnCompiledNode<T> node = frontier[idx];
       final UnCompiledNode<T> parent = frontier[idx - 1];
 
-      // determine prune，compile
+      // 确定是否prune，compile。默认compile，不prune
+      // pron，修剪，如果该前缀的次数小于阈值，则删除该节点
+      // minSuffixCount1，minSuffixCount2 默认0，即不对input prune
       if (node.inputCount < minSuffixCount1) {
         doPrune = true;
         doCompile = true;
@@ -383,6 +386,7 @@ public class FSTCompiler<T> {
       // + idx + " inputCount=" + frontier[idx].inputCount + " doCompile=" + doCompile + " doPrune="
       // + doPrune);
 
+      // TODO wj
       if (node.inputCount < minSuffixCount2
           || (minSuffixCount2 == 1 && node.inputCount == 1 && idx > 1)) {
         // drop all arcs
@@ -403,7 +407,7 @@ public class FSTCompiler<T> {
         if (minSuffixCount2 != 0) {
           compileAllTargets(node, lastInput.length() - idx);
         }
-        final T nextFinalOutput = node.output;
+        final T nextFinalOutput = node.output;  // 如果该node是某个term的结束，则output保存相关分量
 
         // We "fake" the node as being final if it has no
         // outgoing arcs; in theory we could leave it
@@ -417,8 +421,8 @@ public class FSTCompiler<T> {
           // compile any targets that were previously
           // undecided:
           parent.replaceLast(
-              lastInput.intAt(idx - 1),
-              compileNode(node, 1 + lastInput.length() - idx),  // 生成CompiledNode
+              lastInput.intAt(idx - 1),  // parent --arc--> node, 获取arc label，用来验证
+              compileNode(node, 1 + lastInput.length() - idx),  // 生成CompiledNode，主要是将arc的四元素写到bytes中
               nextFinalOutput,
               isFinal);
         } else {
@@ -518,7 +522,7 @@ public class FSTCompiler<T> {
       frontier = next;
     }
 
-    // 2. 将不相同Node节点中的所有arc的四元组信息写入到current[]数组中
+    // 2. 将不相同Node节点及后面节点中的所有arc的四元组信息写入到current[]数组中，即冻结。
     // minimize/compile states from previous input's
     // orphan'd suffix
     freezeTail(prefixLenPlus1);
@@ -540,7 +544,7 @@ public class FSTCompiler<T> {
     // 4. 处理上一个输入与当前输入相同的前缀值，调整output值。
     // push conflicting outputs forward, only as far as
     // needed
-    for (int idx = 1; idx < prefixLenPlus1; idx++) {
+    for (int idx = 1; idx < prefixLenPlus1; idx++) {  // 将common值放到公共arc上，将余量值放到原来的或新的arc上
       final UnCompiledNode<T> node = frontier[idx];
       final UnCompiledNode<T> parentNode = frontier[idx - 1];
 
@@ -635,8 +639,9 @@ public class FSTCompiler<T> {
     int label; // really an "unsigned" byte
     Node target;
     boolean isFinal;
-    T output;  // 该arc的output/weight
-    T nextFinalOutput;
+    // 该arc的output/weight
+    T output;
+    T nextFinalOutput;  // 如果某个term是另一个term的前缀，且output不一样，则该term最后的arc的该field保存output分量
   }
 
   // NOTE: not many instances of Node or CompiledNode are in

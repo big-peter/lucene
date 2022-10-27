@@ -138,13 +138,14 @@ final class NodeHash<T> {
     while (true) {
       final long v = table.get(pos);
       if (v == 0) {
+        // 之前没有相同的后缀，先加入fst，然后再加入hashtable
         // freeze & add
         final long node = fst.addNode(fstCompiler, nodeIn);
         // System.out.println("  now freeze node=" + node);
         assert hash(node) == h : "frozenHash=" + hash(node) + " vs h=" + h;
         count++;
         table.set(pos, node);
-        // Rehash at 2/3 occupancy:
+        // 扩容。 Rehash at 2/3 occupancy:
         if (count > 2 * table.size() / 3) {
           rehash();
         }
@@ -154,6 +155,7 @@ final class NodeHash<T> {
         return v;
       }
 
+      // 尝试下个位置，开地址法
       // quadratic probe
       pos = (pos + (++c)) & mask;
     }
