@@ -341,6 +341,7 @@ public class FSTCompiler<T> {
   private void freezeTail(int prefixLenPlus1) throws IOException {
     // System.out.println("  compileTail " + prefixLenPlus1);
     final int downTo = Math.max(1, prefixLenPlus1);
+    // 从后向前freeze
     for (int idx = lastInput.length(); idx >= downTo; idx--) {
 
       boolean doPrune = false;
@@ -458,7 +459,7 @@ public class FSTCompiler<T> {
    * output is not. So if your outputs are changeable (eg {@link ByteSequenceOutputs} or {@link
    * IntSequenceOutputs}) then you cannot reuse across calls.
    */
-  public void add(IntsRef input, T output) throws IOException {
+  public void add(IntsRef input, T value) throws IOException {
     /*
     if (DEBUG) {
       BytesRef b = new BytesRef(input.length);
@@ -475,13 +476,13 @@ public class FSTCompiler<T> {
     */
 
     // De-dup NO_OUTPUT since it must be a singleton:
-    if (output.equals(NO_OUTPUT)) {
-      output = NO_OUTPUT;
+    if (value.equals(NO_OUTPUT)) {
+      value = NO_OUTPUT;
     }
 
     assert lastInput.length() == 0 || input.compareTo(lastInput.get()) >= 0
         : "inputs are added out of order lastInput=" + lastInput.get() + " vs input=" + input;
-    assert validOutput(output);
+    assert validOutput(value);
 
     // System.out.println("\nadd: " + input);
     if (input.length == 0) {
@@ -492,7 +493,7 @@ public class FSTCompiler<T> {
       // the node
       frontier[0].inputCount++;
       frontier[0].isFinal = true;
-      fst.setEmptyOutput(output);
+      fst.setEmptyOutput(value);
       return;
     }
 
@@ -522,12 +523,12 @@ public class FSTCompiler<T> {
       frontier = next;
     }
 
-    // 2. 将不相同Node节点及后面节点中的所有arc的四元组信息写入到current[]数组中，即冻结。
+    // 2. 将不相同Node节点及后面节点中的所有arc的四元组信息写入到current[]数组中，即冻结。后面会重用frontier[prefixLenPlus:lastLength]的节点
     // minimize/compile states from previous input's
     // orphan'd suffix
     freezeTail(prefixLenPlus1);
 
-    // 3. 将当前输入写入到frontier[]数组中
+    // 3. 从和上一个输入的第一个不相同的位置处将当前输入写入到frontier[]数组中
     // init tail states for current input
     for (int idx = prefixLenPlus1; idx <= input.length; idx++) {
       // 从公共前缀末尾节点开始创建arc
@@ -535,15 +536,17 @@ public class FSTCompiler<T> {
       frontier[idx].inputCount++;
     }
 
+    // 设置node的isFinal属性
     final UnCompiledNode<T> lastNode = frontier[input.length];
     if (lastInput.length() != input.length || prefixLenPlus1 != input.length + 1) {
       lastNode.isFinal = true;
       lastNode.output = NO_OUTPUT;
     }
 
-    // 4. 处理上一个输入与当前输入相同的前缀值，调整output值。
-    // push conflicting outputs forward, only as far as
-    // needed
+    // 4. 处理上一个输入与当前输入相同的前缀值，调整output值。保证之前path的output和不变，该次path的output和等于value
+    // 一直循环到前缀结束，在新的value大于前缀边上的output时，以便将余量分配到之前的路径的其他边
+    // push conflicting outputs forward, only as far as needed
+//    value = updateOutputRecursively(input, value, 0, prefixLenPlus1 - 1);
     for (int idx = 1; idx < prefixLenPlus1; idx++) {  // 将common值放到公共arc上，将余量值放到原来的或新的arc上
       final UnCompiledNode<T> node = frontier[idx];
       final UnCompiledNode<T> parentNode = frontier[idx - 1];
@@ -555,35 +558,91 @@ public class FSTCompiler<T> {
       final T wordSuffix;
 
       if (lastOutput != NO_OUTPUT) {
-        commonOutputPrefix = fst.outputs.common(output, lastOutput);  // common/min操作
+        // common/min操作。计算最小值
+        commonOutputPrefix = fst.outputs.common(value, lastOutput);
         assert validOutput(commonOutputPrefix);
-        wordSuffix = fst.outputs.subtract(lastOutput, commonOutputPrefix);  // subtract操作
+
+        // subtract操作。计算余量
+        // 如果当前输入的Value大于等于edge的output，最小值为output，output余量为0，后面的操作不会对之前的输入有影响
+        // 如果当前输入的Value小于edge的output，最小值为Value，output余量为差值。后面的操作会将output余量加入到后续的边
+        wordSuffix = fst.outputs.subtract(lastOutput, commonOutputPrefix);  // output - common
         assert validOutput(wordSuffix);
-        parentNode.setLastOutput(input.ints[input.offset + idx - 1], commonOutputPrefix);  // 设置公共的arc的output
-        node.prependOutput(wordSuffix);  // 将余量加到子节点的每个出箭头上
+
+        // 设置公共的arc的output。
+        parentNode.setLastOutput(input.ints[input.offset + idx - 1], commonOutputPrefix);
+        // 将余量加到子节点的每个出箭头上
+        node.prependOutput(wordSuffix);
       } else {
         commonOutputPrefix = wordSuffix = NO_OUTPUT;
       }
 
-      output = fst.outputs.subtract(output, commonOutputPrefix);  // 更新output
-      assert validOutput(output);
+      // 计算还有多少Value要加到后面的边上。当输入的Value大于edge的output时，更新后的value才不为0
+      // 如果更新后value为0且后面还有公共前缀，则后续循环会更新后面的公共前缀为0，最后会将余量加入到分叉口
+      // 树的递归算法思路，每次只考虑一个节点。递归算法参考方法addForPathOutput
+      value = fst.outputs.subtract(value, commonOutputPrefix);  // value - common
+      assert validOutput(value);
     }
 
-    if (lastInput.length() == input.length && prefixLenPlus1 == 1 + input.length) {  // lastInput和input相同
-      // same input more than 1 time in a row, mapping to
-      // multiple outputs
-      lastNode.output = fst.outputs.merge(lastNode.output, output);
+    // 将value余量加到新路径分叉处
+    // lastInput和input相同
+    if (lastInput.length() == input.length && prefixLenPlus1 == 1 + input.length) {
+      // same input more than 1 time in a row, mapping to multiple outputs
+      lastNode.output = fst.outputs.merge(lastNode.output, value);
     } else {
       // this new arc is private to this new input; set its
       // arc output to the leftover output:
       frontier[prefixLenPlus1 - 1].setLastOutput(
-          input.ints[input.offset + prefixLenPlus1 - 1], output);
+          input.ints[input.offset + prefixLenPlus1 - 1], value);
     }
 
     // save last input
     lastInput.copyInts(input);
 
     // System.out.println("  count[0]=" + frontier[0].inputCount);
+  }
+
+  /**
+   * 新增input时递归更新output的实现
+   *
+   * 将拓扑看做一个树，value需要增加到最右面的一条路径
+   *
+   * @param input
+   * @param value
+   * @throws IOException
+   */
+  public T updateOutputRecursively(IntsRef input, T value, int idx, int prefixLen) throws IOException {
+    if (idx >= prefixLen) {
+      return value;
+    }
+
+    // 获取最右边路径的output
+    T output = frontier[idx].getLastOutput(input.ints[input.offset + idx]);
+
+    // fast path
+    if (output == NO_OUTPUT) {
+      T remainingValue = fst.outputs.subtract(value, NO_OUTPUT);
+      // 处理最右子节点
+      return updateOutputRecursively(input, remainingValue, idx + 1, prefixLen);
+    }
+
+    // 获取common值
+    T common = fst.outputs.common(value, output);
+    // 获取更新output的余量
+    T remainingOutput = fst.outputs.subtract(output, common);
+    // 获取更新value的余量
+    T remainingValue = fst.outputs.subtract(value, common);
+
+    // 获取最右子节点
+    int arcNum = frontier[idx].numArcs;
+    UnCompiledNode<T> mostRightChildNode = (UnCompiledNode<T>) frontier[idx].arcs[arcNum - 1].target;
+
+    // 更新最右路径为common
+    frontier[idx].setLastOutput(input.ints[input.offset + idx], common);
+    // 最右子节点的输出全部加output余量
+    mostRightChildNode.prependOutput(remainingOutput);
+
+    // 处理最右子节点
+    return updateOutputRecursively(input, remainingValue, idx + 1, prefixLen);
   }
 
   private boolean validOutput(T output) {
@@ -768,11 +827,13 @@ public class FSTCompiler<T> {
     void prependOutput(T outputPrefix) {
       assert owner.validOutput(outputPrefix);
 
+      // 将余量加入到所有的出边
       for (int arcIdx = 0; arcIdx < numArcs; arcIdx++) {
-        arcs[arcIdx].output = owner.fst.outputs.add(outputPrefix, arcs[arcIdx].output);  // add操作
+        arcs[arcIdx].output = owner.fst.outputs.add(outputPrefix, arcs[arcIdx].output);
         assert owner.validOutput(arcs[arcIdx].output);
       }
 
+      // 如果当前节点是某个输入的结束节点，node.output也累加余量
       if (isFinal) {
         output = owner.fst.outputs.add(outputPrefix, output);
         assert owner.validOutput(output);

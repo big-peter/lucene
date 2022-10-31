@@ -1,0 +1,126 @@
+
+1. add (mo -> 100)
+@startuml
+hide empty description
+2: Final=True
+
+0 -right-> 1 : m/100
+1 -right-> 2 : o
+
+@enduml
+
+2. add (moth -> 91)
+@startuml
+hide empty description
+
+2: Final=True
+2: FinalOut=9
+
+4: Final=True
+
+0 -right-> 1 : m/91
+1 -right-> 2 : o
+2 -right-> 3 : t
+3 -right-> 4 : h
+
+@enduml
+
+
+3. add (pop -> 72)
+@startuml
+hide empty description
+
+2: Final=True
+2: FinalOut=9
+
+4: Final=True
+
+0 -up-> 1 : m/91
+1 -right-> 2 : o
+2 -right-> 3 : t
+3 -right-> 4 : h
+
+0 -right-> 5 : p/72
+5 -right-> 6 : o
+6 -right-> 4 : p
+@enduml
+
+4. add (star -> 83)
+@startuml
+hide empty description
+
+2: Final=True
+2: FinalOut=9
+
+4: Final=True
+
+0 -up-> 5 : p/72
+5 -right-> 6 : o
+6 -right-> 4 : p
+
+0 -up-> 1 : m/91
+1 -right-> 2 : o
+2 -right-> 3 : t
+3 -right-> 4 : h
+
+0 -right-> 8 : s/83
+8 -right-> 9 : t
+9 -right-> 10 : a
+10 -right-> 4 : r
+@enduml
+
+
+5. add (stop -> 54)
+@startuml
+hide empty description
+
+2: Final=True
+2: FinalOut=9
+
+4: Final=True
+
+0 -up-> 5 : p/72
+5 -right-> 6 : o
+6 -right-> 4 : p
+
+0 -up-> 1 : m/91
+1 -right-> 2 : o
+2 -right-> 3 : t
+3 -right-> 4 : h
+
+0 -right-> 8 : s/54
+8 -right-> 9 : t
+9 -right-> 10 : a/29
+10 -right-> 4 : r
+
+9 -up-> 6 : o
+@enduml
+
+
+6. add (top -> 55)
+@startuml
+hide empty description
+
+2: Final=True
+2: FinalOut=9
+
+4: Final=True
+
+0 -up-> 8 : s/54
+8 -right-> 9 : t
+9 -right-> 10 : a/29
+10 -right-> 4 : r
+
+9 -up-> 6 : o
+
+0 -right-> 5 : p/72
+5 -right-> 6 : o
+6 -right-> 4 : p
+
+0 -up-> 1 : m/91
+1 -right-> 2 : o
+2 -right-> 3 : t
+3 -right-> 4 : h
+
+0 -right-> 5 : t/55
+@enduml
