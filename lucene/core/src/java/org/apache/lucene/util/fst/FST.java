@@ -596,7 +596,8 @@ public final class FST<T> implements Accountable {
   }
 
   private void writeLabel(DataOutput out, int v) throws IOException {
-    assert v >= 0 : "v=" + v;  // inputType表示label用几个字节表示
+    assert v >= 0 : "v=" + v;
+    // inputType表示label用几个字节表示
     if (inputType == INPUT_TYPE.BYTE1) {
       assert v <= 255 : "v=" + v;
       out.writeByte((byte) v);
@@ -639,6 +640,7 @@ public final class FST<T> implements Accountable {
     T NO_OUTPUT = outputs.getNoOutput();
 
     // System.out.println("FST.addNode pos=" + bytes.getPosition() + " numArcs=" + nodeIn.numArcs);
+    // 输出边个数为0
     if (nodeIn.numArcs == 0) {
       if (nodeIn.isFinal) {
         return FINAL_END_NODE;
@@ -646,10 +648,15 @@ public final class FST<T> implements Accountable {
         return NON_FINAL_END_NODE;
       }
     }
+
+    // bytes开始写入下标
     final long startAddress = fstCompiler.bytes.getPosition();
     // System.out.println("  startAddr=" + startAddress);
 
+    // 紧密编码还是定长编码
     final boolean doFixedLengthArcs = shouldExpandNodeWithFixedLengthArcs(fstCompiler, nodeIn);
+
+    // 如果是定长编码，扩容numBytesPerArc和numLabelBytesPerArc
     if (doFixedLengthArcs) {
       // System.out.println("  fixed length arcs");
       if (fstCompiler.numBytesPerArc.length < nodeIn.numArcs) {
@@ -665,6 +672,8 @@ public final class FST<T> implements Accountable {
     long lastArcStart = fstCompiler.bytes.getPosition();
     int maxBytesPerArc = 0;
     int maxBytesPerArcWithoutLabel = 0;
+
+    // 将每个arc的flag，label，output，address写入bytes
     for (int arcIdx = 0; arcIdx < nodeIn.numArcs; arcIdx++) {
       final FSTCompiler.Arc<T> arc = nodeIn.arcs[arcIdx];
       final FSTCompiler.CompiledNode target = (FSTCompiler.CompiledNode) arc.target;
@@ -672,21 +681,22 @@ public final class FST<T> implements Accountable {
       // System.out.println("  arc " + arcIdx + " label=" + arc.label + " -> target=" +
       // target.node);
 
+      // 获取flags
       if (arcIdx == lastArc) {
-        flags += BIT_LAST_ARC;
+        flags += BIT_LAST_ARC;  // 该边是节点出边的最后一个
       }
 
       if (fstCompiler.lastFrozenNode == target.node && !doFixedLengthArcs) {
         // TODO: for better perf (but more RAM used) we
         // could avoid this except when arc is "near" the
         // last arc:
-        flags += BIT_TARGET_NEXT;
+        flags += BIT_TARGET_NEXT;  // 该边的target是上一次frozen的节点
       }
 
       if (arc.isFinal) {
-        flags += BIT_FINAL_ARC;
+        flags += BIT_FINAL_ARC;  // 该边是某个输入的结束
         if (arc.nextFinalOutput != NO_OUTPUT) {
-          flags += BIT_ARC_HAS_FINAL_OUTPUT;
+          flags += BIT_ARC_HAS_FINAL_OUTPUT;  // 该边的target有output
         }
       } else {
         assert arc.nextFinalOutput == NO_OUTPUT;
@@ -695,15 +705,18 @@ public final class FST<T> implements Accountable {
       boolean targetHasArcs = target.node > 0;
 
       if (!targetHasArcs) {
-        flags += BIT_STOP_NODE;
+        flags += BIT_STOP_NODE; // 该边是终止边(叶子节点)
       }
 
       if (arc.output != NO_OUTPUT) {
-        flags += BIT_ARC_HAS_OUTPUT;
+        flags += BIT_ARC_HAS_OUTPUT;  // 该边有output
       }
 
-      fstCompiler.bytes.writeByte((byte) flags);  // 写flag
+      // 1. 写flag
+      fstCompiler.bytes.writeByte((byte) flags);
       long labelStart = fstCompiler.bytes.getPosition();
+
+      // 2. 写label。该方法用来判断用几个字节写label
       writeLabel(fstCompiler.bytes, arc.label);
       int numLabelBytes = (int) (fstCompiler.bytes.getPosition() - labelStart);
 
@@ -711,25 +724,31 @@ public final class FST<T> implements Accountable {
       // target=" + target.node + " pos=" + bytes.getPosition() + " output=" +
       // outputs.outputToString(arc.output));
 
+      // 3. 写output
       if (arc.output != NO_OUTPUT) {
-        outputs.write(arc.output, fstCompiler.bytes);  // 写output
+        // outputs类型是ByteSequenceOutputs，显现VInt length，再写bytes
+        outputs.write(arc.output, fstCompiler.bytes);
         // System.out.println("    write output");
       }
 
+      // 4. 写finalOutput
       if (arc.nextFinalOutput != NO_OUTPUT) {
         // System.out.println("    write final output");
         outputs.writeFinalOutput(arc.nextFinalOutput, fstCompiler.bytes);  // 写nextFinalOutput
       }
 
+      // 5. 如果有共享后缀（即下个边在前面已经写入bytes），将arc的address保存下来
       if (targetHasArcs && (flags & BIT_TARGET_NEXT) == 0) {
         assert target.node > 0;
         // System.out.println("    write target");
         fstCompiler.bytes.writeVLong(target.node);
       }
 
+      // 如果是定长编码，将arc使用的byte数和label使用的byte数保存到int数组中
       // just write the arcs "like normal" on first pass, but record how many bytes each one took
       // and max byte size:
       if (doFixedLengthArcs) {
+        // 该arc使用的byte数
         int numArcBytes = (int) (fstCompiler.bytes.getPosition() - lastArcStart);
         fstCompiler.numBytesPerArc[arcIdx] = numArcBytes;
         fstCompiler.numLabelBytesPerArc[arcIdx] = numLabelBytes;
@@ -740,6 +759,8 @@ public final class FST<T> implements Accountable {
         // System.out.println("    arcBytes=" + numArcBytes + " labelBytes=" + numLabelBytes);
       }
     }
+
+    // 所有arc已写入bytes
 
     // TODO: try to avoid wasteful cases: disable doFixedLengthArcs in that case
     /*
@@ -761,10 +782,11 @@ public final class FST<T> implements Accountable {
     }
     */
 
+    // 如果是定长编码
+    // TODO wj curr
     if (doFixedLengthArcs) {
       assert maxBytesPerArc > 0;
       // 2nd pass just "expands" all arcs to take up a fixed byte size
-
       int labelRange = nodeIn.arcs[nodeIn.numArcs - 1].label - nodeIn.arcs[0].label + 1;
       assert labelRange > 0;
       if (shouldExpandNodeWithDirectAddressing(
@@ -778,8 +800,10 @@ public final class FST<T> implements Accountable {
       }
     }
 
+    // 获取node的结束地址
     final long thisNodeAddress = fstCompiler.bytes.getPosition() - 1;
-    fstCompiler.bytes.reverse(startAddress, thisNodeAddress); // 写入顺序flag,label。反转之，label，flag。
+    // 写入顺序flag,label，output，address。反转之，address，output，label，flag。
+    fstCompiler.bytes.reverse(startAddress, thisNodeAddress);
     fstCompiler.nodeCount++;
     return thisNodeAddress;
   }

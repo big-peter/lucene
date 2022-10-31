@@ -46,7 +46,7 @@ public class FSTCompiler<T> {
 
   static final float DIRECT_ADDRESSING_MAX_OVERSIZING_FACTOR = 1f;
 
-  private final NodeHash<T> dedupHash;
+  private final NodeHash<T> dedupHash;  // 哈希表，用来去重
   final FST<T> fst;
   private final T NO_OUTPUT;
 
@@ -78,6 +78,7 @@ public class FSTCompiler<T> {
   // node in the byte[] is the target node):
   long lastFrozenNode;
 
+  // 用来定长存储时保存每个arc的byte数
   // Reused temporarily while building the FST:
   int[] numBytesPerArc = new int[4];
   int[] numLabelBytesPerArc = new int[numBytesPerArc.length];
@@ -308,7 +309,7 @@ public class FSTCompiler<T> {
 
   private CompiledNode compileNode(UnCompiledNode<T> nodeIn, int tailLength) throws IOException {
     final long node;
-    long bytesPosStart = bytes.getPosition();
+    long bytesPosStart = bytes.getPosition();  // bytes开始写入位置
     if (dedupHash != null
         && (doShareNonSingletonNodes || nodeIn.numArcs <= 1)
         && tailLength <= shareMaxTailLength) {
@@ -316,7 +317,7 @@ public class FSTCompiler<T> {
         node = fst.addNode(this, nodeIn);  // encode
         lastFrozenNode = node;
       } else {
-        node = dedupHash.add(this, nodeIn);  // 处理相同后缀
+        node = dedupHash.add(this, nodeIn);  // 处理相同后缀，保证相同后缀只存储一份
       }
     } else {
       node = fst.addNode(this, nodeIn);
@@ -341,7 +342,7 @@ public class FSTCompiler<T> {
   private void freezeTail(int prefixLenPlus1) throws IOException {
     // System.out.println("  compileTail " + prefixLenPlus1);
     final int downTo = Math.max(1, prefixLenPlus1);
-    // 从后向前freeze
+    // 从后向前freeze node，直到公共前缀处
     for (int idx = lastInput.length(); idx >= downTo; idx--) {
 
       boolean doPrune = false;
@@ -424,7 +425,7 @@ public class FSTCompiler<T> {
           parent.replaceLast(
               lastInput.intAt(idx - 1),  // parent --arc--> node, 获取arc label，用来验证
               compileNode(node, 1 + lastInput.length() - idx),  // 生成CompiledNode，主要是将arc的四元素写到bytes中
-              nextFinalOutput,
+              nextFinalOutput,  // 将node的output赋值给arc
               isFinal);
         } else {
           // replaceLast just to install
@@ -497,7 +498,7 @@ public class FSTCompiler<T> {
       return;
     }
 
-    // 1. 找到上一个输入与当前输入不相同的Node节点
+    // 1. 找到上一个输入与当前输入不相同的Node节点。保证相同前缀只保存一份
     // compare shared prefix length
     int pos1 = 0;
     int pos2 = input.offset;

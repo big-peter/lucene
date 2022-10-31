@@ -37,6 +37,7 @@ final class NodeHash<T> {
     this.in = in;
   }
 
+  // 在bytes的address读取compiledNode信息，并判断与node是否相等
   private boolean nodesEqual(FSTCompiler.UnCompiledNode<T> node, long address) throws IOException {
     fst.readFirstRealTargetArc(address, scratchArc, in);
 
@@ -133,10 +134,10 @@ final class NodeHash<T> {
       throws IOException {
     // System.out.println("hash: add count=" + count + " vs " + table.size() + " mask=" + mask);
     final long h = hash(nodeIn);
-    long pos = h & mask;
+    long pos = h & mask;  // 按位与操作取模，获取下标
     int c = 0;
     while (true) {
-      final long v = table.get(pos);
+      final long v = table.get(pos);  // table开地址法保存哈希值。key是UnCompiledNode, value是在bytes中的address
       if (v == 0) {
         // 之前没有相同的后缀，先加入fst，然后再加入hashtable
         // freeze & add
@@ -151,12 +152,13 @@ final class NodeHash<T> {
         }
         return node;
       } else if (nodesEqual(nodeIn, v)) {
+        // 如果nodeId和bytes中保存的node相同
         // same node is already here
         return v;
       }
 
-      // 尝试下个位置，开地址法
-      // quadratic probe
+      // 尝试下个位置，开地址法。
+      // quadratic probe，二次探测
       pos = (pos + (++c)) & mask;
     }
   }

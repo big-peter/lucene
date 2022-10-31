@@ -94,8 +94,8 @@ public abstract class AbstractPagedMutable<T extends AbstractPagedMutable<T>> ex
   /** Set value at <code>index</code>. */
   public final void set(long index, long value) {
     assert index >= 0 && index < size;
-    final int pageIndex = pageIndex(index);
-    final int indexInPage = indexInPage(index);
+    final int pageIndex = pageIndex(index);  // 获取page下标
+    final int indexInPage = indexInPage(index);  // 获取在page中的下标
     subMutables[pageIndex].set(indexInPage, value);
   }
 
