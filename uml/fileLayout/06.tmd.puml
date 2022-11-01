@@ -16,13 +16,13 @@ json ".tmd File Layout" as J {
       {"Fields\t\t": [
           {"FieldA\t": [
              {"FieldMeta": [
-                {"FieldNO\t\t\t": "[VInt]"},
-                {"NumTerms\t\t": "[VLong]"},
-                {"RootCodeLength\t": "[VInt]"},
-                {"RootCode\t\t": "[Bytes]"},
-                {"TotalTermFreq\t": "[VLong] Optional"},
-                {"TotalDocFreq\t\t": "[VLong]"},
-                {"DocsCardinality\t": "[VInt]"},
+                {"FieldNO\t\t\t": "[VInt] 字段序号"},
+                {"NumTerms\t\t": "[VLong] 该Field包含的term个数"},
+                {"RootCodeLength\t": "[VInt] FST中根PendingBlock对应的value"},
+                {"RootCode\t\t": "[Bytes] timFPDelta<<2 | hasTerms | isFloor"},
+                {"TotalTermFreq\t": "[VLong] Optional，term的词项频率之和"},
+                {"TotalDocFreq\t\t": "[VLong] term的文档频率之和"},
+                {"DocsCardinality\t": "[VInt] 文档数"},
                 {"StartTerm\t\t": {
                     "Length\t\t": {"[VInt]\t\t":[]},
                     "Content\t\t": {"[Bytes]\t\t":[]}
@@ -31,7 +31,7 @@ json ".tmd File Layout" as J {
                     "Length\t\t": {"[VInt]\t\t":[]},
                     "Content\t\t": {"[Bytes]\t\t":[]}
                 }},
-                {"IndexFP\t\t\t": "[VLong]"},
+                {"IndexFP\t\t\t": "[VLong] 该Field的数据在tip文件中的FP"},
                 {"FSTInfo\t\t\t": {
                     "Header\t":[
                         {"HeaderMagic\t": "[Int] 0x3fd76c17"},
@@ -43,9 +43,9 @@ json ".tmd File Layout" as J {
                         {"EmptyLen\t": "[VInt] Optional"},
                         {"EmptyOutput\t": "[Bytes] Optional"}
                     ],
-                    "InputType\t": "[Byte]",
-                    "StartNode\t": "[VLong]",
-                    "FstLength\t": "[VLong] Optional"
+                    "InputType\t": "[Byte] byte1/byte2/byte4",
+                    "StartNode\t": "[VLong] FST开始节点偏移量",
+                    "FstLength\t": "[VLong] Optional，FST字节数组大小"
                 }},
                 "..."
              ]}

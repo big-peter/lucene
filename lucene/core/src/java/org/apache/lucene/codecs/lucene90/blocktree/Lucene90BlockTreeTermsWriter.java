@@ -1204,6 +1204,7 @@ public final class Lucene90BlockTreeTermsWriter extends FieldsConsumer {
         // fix all the places that assume the root block's prefix is the empty string:
         pushTerm(new BytesRef());
         // 将term栈中剩余未处理的PendingEntry生成PendingBlock。至此所有的PendingEntry会生成一个PendingBlock
+        // 此处前缀长度为0，即最后一个PendingBlock的前缀为空，构建FST时input为空，会设置EmptyOutput（floorLeadByte, fp, hasTerms）
         writeBlocks(0, pending.size());
 
         // We better have one final "root" block:
