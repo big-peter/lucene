@@ -391,6 +391,8 @@ final class FrozenBufferedUpdates {
           assert privateSegment != null;
           limit = deleteQueryLimits[i];
         } else {
+          // 只有主动flush时的第一个segment会产生global packet，走此path；其他都走上面path
+          // global packet的limit 无限
           limit = Integer.MAX_VALUE;
         }
 

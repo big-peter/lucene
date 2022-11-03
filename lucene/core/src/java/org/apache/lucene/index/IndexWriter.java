@@ -2807,6 +2807,8 @@ public class IndexWriter
       }
 
       // 如果全局删除信息还没发布，先发布全局删除事件
+      // 先发布global packet，后发布private packet，保证global.delGen < private.delGen
+      // 即global packet的删除信息只应用到该次flush之前的segments，不会应用到该次flush的segments上
       if (globalPacket != null && globalPacket.any()) {
         publishFrozenUpdates(globalPacket);
       }
@@ -2814,6 +2816,8 @@ public class IndexWriter
       // Publishing the segment must be sync'd on IW -> BDS to make the sure
       // that no merge prunes away the seg. private delete packet
       final long nextGen;
+      // 在上次flush和该次flush之间，只要有存在一个dwpt有del操作，且del操作发生在该del操作之后，该dwpt的private packet就不为空
+      // 应为private deleteSlice会同步deleteQueue中的删除信息
       if (packet != null && packet.any()) {
         nextGen = publishFrozenUpdates(packet);
       } else {
@@ -2827,6 +2831,8 @@ public class IndexWriter
         infoStream.message(
             "IW", "publish sets newSegment delGen=" + nextGen + " seg=" + segString(newSegment));
       }
+
+      // 设置改segment的delGen
       newSegment.setBufferedDeletesGen(nextGen);
       segmentInfos.add(newSegment);
       published = true;
@@ -5922,6 +5928,8 @@ public class IndexWriter
 
         synchronized (this) {
           // 获取updates要应用的segments
+          // private packet只会获取对应的segment
+          // global packet只会获取所有的segments，但在后面逻辑中只会处理该次flush之前的segments
           List<SegmentCommitInfo> infos = getInfosToApply(updates);
           if (infos == null) {
             break;
@@ -6165,6 +6173,8 @@ public class IndexWriter
     try {
       for (SegmentCommitInfo info : infos) {
         // 先判断delGen，然后看是否已经处理过
+        // 对于private packet，segment.delGen == updates.delGen
+        // 对于global packet，只要segment.delGen < updates.delGen的segment，即该次flush之前的segments。(global packet的delGen是该次flush中最小delGen)
         if (info.getBufferedDeletesGen() <= delGen && alreadySeenSegments.contains(info) == false) {
           segStates.add(
               new BufferedUpdatesStream.SegmentState(

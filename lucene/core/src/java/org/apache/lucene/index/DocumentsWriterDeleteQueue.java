@@ -265,6 +265,7 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
     if (globalBufferedUpdates.any()) {
       final FrozenBufferedUpdates packet =
           new FrozenBufferedUpdates(infoStream, globalBufferedUpdates, null);
+      // 保证主动flush时只有第一个segment会产生global packet
       globalBufferedUpdates.clear();
       return packet;
     } else {

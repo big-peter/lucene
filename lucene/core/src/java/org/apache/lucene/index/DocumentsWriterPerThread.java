@@ -277,6 +277,7 @@ final class DocumentsWriterPerThread implements Accountable {
       deleteSlice.apply(pendingUpdates, docIdUpTo);
       return seqNo;
     } else {
+      // 即使是add操作，如果其他dwpt有del操作，也会将其保存到该dwpt的deleteQueue中
       seqNo = deleteQueue.updateSlice(deleteSlice);
       if (seqNo < 0) {
         seqNo = -seqNo;
