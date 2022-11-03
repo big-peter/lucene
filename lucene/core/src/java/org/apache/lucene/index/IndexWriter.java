@@ -2760,7 +2760,10 @@ public class IndexWriter
 
   private synchronized long publishFrozenUpdates(FrozenBufferedUpdates packet) {
     assert packet != null && packet.any();
+    // 获取delGen
     long nextGen = bufferedUpdatesStream.push(packet);
+
+    // 添加到eventQueue中
     // Do this as an event so it applies higher in the stack when we are not holding
     // DocumentsWriterFlushQueue.purgeLock:
     eventQueue.add(
@@ -2803,6 +2806,7 @@ public class IndexWriter
         infoStream.message("IW", "publishFlushedSegment " + newSegment);
       }
 
+      // 如果全局删除信息还没发布，先发布全局删除事件
       if (globalPacket != null && globalPacket.any()) {
         publishFrozenUpdates(globalPacket);
       }
@@ -5620,14 +5624,17 @@ public class IndexWriter
           DocumentsWriterPerThread.FlushedSegment newSegment = ticket.getFlushedSegment();
           FrozenBufferedUpdates bufferedUpdates = ticket.getFrozenUpdates();
           ticket.markPublished();
+          // case：newSegment == null. 1:只有删除，没有增改；2：有增改，但生成segment的时候出错了
           if (newSegment == null) { // this is a flushed global deletes package - not a segments
             if (bufferedUpdates != null && bufferedUpdates.any()) { // TODO why can this be null?
+              // 将发布bufferedUpdates作为事件添加到event queue
               publishFrozenUpdates(bufferedUpdates);
               if (infoStream.isEnabled("IW")) {
                 infoStream.message("IW", "flush: push buffered updates: " + bufferedUpdates);
               }
             }
           } else {
+            // 发布segment
             assert newSegment.segmentInfo != null;
             if (infoStream.isEnabled("IW")) {
               infoStream.message(
@@ -5641,8 +5648,8 @@ public class IndexWriter
             publishFlushedSegment(
                 newSegment.segmentInfo,
                 newSegment.fieldInfos,
-                newSegment.segmentUpdates,
-                bufferedUpdates,
+                newSegment.segmentUpdates,  // private packet
+                bufferedUpdates,  // global packet
                 newSegment.sortMap);
           }
         });
@@ -5914,6 +5921,7 @@ public class IndexWriter
         BufferedUpdatesStream.SegmentState[] segStates;
 
         synchronized (this) {
+          // 获取updates要应用的segments
           List<SegmentCommitInfo> infos = getInfosToApply(updates);
           if (infos == null) {
             break;
@@ -5957,6 +5965,7 @@ public class IndexWriter
         long delCount;
         try (Closeable finalizer = () -> finishApply(segStates, success.get(), delFiles)) {
           assert finalizer != null; // access the finalizer to prevent a warning
+          // 应用删除信息
           // don't hold IW monitor lock here so threads are free concurrently resolve
           // deletes/updates:
           delCount = updates.apply(segStates);
@@ -5998,6 +6007,7 @@ public class IndexWriter
         synchronized (this) {
           long mergeGenCur = mergeFinishedGen.get();
 
+          // flush期间没有merge完成
           if (mergeGenCur == mergeGenStart) {
 
             // Must do this while still holding IW lock else a merge could finish and skip carrying
@@ -6057,6 +6067,7 @@ public class IndexWriter
   private synchronized List<SegmentCommitInfo> getInfosToApply(FrozenBufferedUpdates updates) {
     final List<SegmentCommitInfo> infos;
     if (updates.privateSegment != null) {
+      // 私有删除
       if (segmentInfos.contains(updates.privateSegment)) {
         infos = Collections.singletonList(updates.privateSegment);
       } else {
@@ -6066,6 +6077,7 @@ public class IndexWriter
         infos = null;
       }
     } else {
+      // 全局删除
       infos = segmentInfos.asList();
     }
     return infos;
@@ -6077,6 +6089,7 @@ public class IndexWriter
     synchronized (this) {
       BufferedUpdatesStream.ApplyDeletesResult result;
       try {
+        // 判断是否有文档全被删除的段
         result = closeSegmentStates(segStates, success);
       } finally {
         // Matches the incRef we did above, but we must do the decRef after closing segment states
@@ -6094,6 +6107,8 @@ public class IndexWriter
         if (infoStream.isEnabled("IW")) {
           infoStream.message("IW", "drop 100% deleted segments: " + segString(result.allDeleted));
         }
+
+        // 将文档全被删除的段移除
         for (SegmentCommitInfo info : result.allDeleted) {
           dropDeletedSegment(info);
         }
@@ -6114,6 +6129,7 @@ public class IndexWriter
           int fullDelCount = segState.rld.getDelCount();
           assert fullDelCount <= segState.rld.info.info.maxDoc()
               : fullDelCount + " > " + segState.rld.info.info.maxDoc();
+          // 该段中的文档都被删除
           if (segState.rld.isFullyDeleted()
               && getConfig().getMergePolicy().keepFullyDeletedSegment(() -> segState.reader)
                   == false) {
@@ -6148,6 +6164,7 @@ public class IndexWriter
     List<BufferedUpdatesStream.SegmentState> segStates = new ArrayList<>();
     try {
       for (SegmentCommitInfo info : infos) {
+        // 先判断delGen，然后看是否已经处理过
         if (info.getBufferedDeletesGen() <= delGen && alreadySeenSegments.contains(info) == false) {
           segStates.add(
               new BufferedUpdatesStream.SegmentState(

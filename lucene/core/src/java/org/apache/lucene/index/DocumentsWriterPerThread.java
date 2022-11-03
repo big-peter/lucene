@@ -131,6 +131,7 @@ final class DocumentsWriterPerThread implements Accountable {
   private final LiveIndexWriterConfig indexWriterConfig;
   private final boolean enableTestPoints;
   private final ReentrantLock lock = new ReentrantLock();
+  // 保存添加失败的文档号
   private int[] deleteDocIDs = new int[0];
   private int numDeletedDocIds = 0;
 
@@ -353,6 +354,7 @@ final class DocumentsWriterPerThread implements Accountable {
             new IOContext(new FlushInfo(numDocsInRAM, lastCommittedBytesUsed)));
     final double startMBUsed = lastCommittedBytesUsed / 1024. / 1024.;
 
+    // .liv
     // Apply delete-by-docID now (delete-byDocID only
     // happens when an exception is hit processing that
     // doc, eg if analyzer has some problem w/ the text):

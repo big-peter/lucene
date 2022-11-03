@@ -1,0 +1,149 @@
+@startuml
+
+!theme plain
+top to bottom direction
+skinparam linetype ortho
+
+class BufferedUpdates {
+  - bytesUsed: Counter
+  ~ fieldUpdatesBytesUsed: Counter
+  ~ BYTES_PER_DEL_QUERY: int
+  ~ fieldUpdates: Map<String, FieldUpdatesBuffer>
+  ~ numFieldUpdates: AtomicInteger
+  ~ deleteTerms: Map<Term, Integer>
+  ~ deleteQueries: Map<Query, Integer>
+  - termsBytesUsed: Counter
+  ~ BYTES_PER_DEL_TERM: int
+  ~ gen: long
+  - VERBOSE_DELETES: boolean
+  + MAX_INT: Integer
+  ~ numTermDeletes: AtomicInteger
+  ~ segmentName: String
+}
+class FieldInfos {
+  - hasPostings: boolean
+  - softDeletesField: String
+  - byNumber: FieldInfo[]
+  - values: Collection<FieldInfo>
+  - hasDocValues: boolean
+  - byName: HashMap<String, FieldInfo>
+  - hasFreq: boolean
+  - hasPointValues: boolean
+  - hasVectors: boolean
+  - hasPayloads: boolean
+  - hasOffsets: boolean
+  - hasVectorValues: boolean
+  - hasNorms: boolean
+  - hasProx: boolean
+  + EMPTY: FieldInfos
+}
+class FlushTicket {
+  - segment: FlushedSegment
+  - failed: boolean
+  - frozenUpdates: FrozenBufferedUpdates
+  - hasSegment: boolean
+  - published: boolean
+}
+class FlushedSegment {
+  ~ segmentInfo: SegmentCommitInfo
+  ~ segmentUpdates: FrozenBufferedUpdates
+  ~ liveDocs: FixedBitSet
+  ~ sortMap: DocMap
+  ~ delCount: int
+  ~ fieldInfos: FieldInfos
+}
+class FrozenBufferedUpdates {
+  ~ bytesUsed: int
+  + totalDelCount: long
+  - applyLock: ReentrantLock
+  - delGen: long
+  ~ deleteTerms: PrefixCodedTerms
+  ~ privateSegment: SegmentCommitInfo
+  ~ BYTES_PER_DEL_QUERY: int
+  ~ numTermDeletes: int
+  ~ deleteQueries: Query[]
+  + applied: CountDownLatch
+  - fieldUpdates: Map<String, FieldUpdatesBuffer>
+  - infoStream: InfoStream
+  ~ deleteQueryLimits: int[]
+  - fieldUpdatesCount: int
+}
+class SegmentCommitInfo {
+  - docValuesGen: long
+  - dvUpdatesFiles: Map<Integer, Set<String>>
+  + info: SegmentInfo
+  - delGen: long
+  - fieldInfosGen: long
+  - softDelCount: int
+  - nextWriteFieldInfosGen: long
+  - id: byte[]
+  - delCount: int
+  - fieldInfosFiles: Set<String>
+  - nextWriteDelGen: long
+  - bufferedDeletesGen: long
+  - sizeInBytes: long
+  - nextWriteDocValuesGen: long
+}
+class SegmentInfo {
+  + NO: int
+  - isCompoundFile: boolean
+  - version: Version
+  + name: String
+  + dir: Directory
+  ~ minVersion: Version
+  + YES: int
+  - attributes: Map<String, String>
+  - indexSort: Sort
+  - maxDoc: int
+  - id: byte[]
+  - setFiles: Set<String>
+  - diagnostics: Map<String, String>
+  - codec: Codec
+}
+class SegmentInfos {
+  - OLD_SEGMENTS_GEN: String
+  - indexCreatedVersionMajor: int
+  ~ VERSION_CURRENT: int
+  + counter: long
+  + userData: Map<String, String>
+  - infoStream: PrintStream
+  + VERSION_74: int
+  + VERSION_70: int
+  - segments: List<SegmentCommitInfo>
+  - minSegmentLuceneVersion: Version
+  ~ pendingCommit: boolean
+  - id: byte[]
+  - luceneVersion: Version
+  + version: long
+  - lastGeneration: long
+  - generation: long
+  + VERSION_86: int
+  + VERSION_72: int
+}
+class SegmentWriteState {
+  + segmentInfo: SegmentInfo
+  + infoStream: InfoStream
+  + context: IOContext
+  + segmentSuffix: String
+  + directory: Directory
+  + softDelCountOnFlush: int
+  + fieldInfos: FieldInfos
+  + segUpdates: BufferedUpdates
+  + liveDocs: FixedBitSet
+  + delCountOnFlush: int
+}
+
+FlushTicket           "1" *-[#595959,plain]-> "segment\n1" FlushedSegment        
+FlushTicket           "1" *-[#595959,plain]-> "frozenUpdates\n1" FrozenBufferedUpdates 
+FlushedSegment        "1" *-[#595959,plain]-> "fieldInfos\n1" FieldInfos            
+FlushedSegment        "1" *-[#595959,plain]-> "segmentUpdates\n1" FrozenBufferedUpdates 
+FlushedSegment         -[#595959,dashed]->  FrozenBufferedUpdates : "«create»"
+FlushedSegment        "1" *-[#595959,plain]-> "segmentInfo\n1" SegmentCommitInfo     
+FrozenBufferedUpdates "1" *-[#595959,plain]-> "privateSegment\n1" SegmentCommitInfo     
+SegmentCommitInfo     "1" *-[#595959,plain]-> "info\n1" SegmentInfo           
+SegmentInfos          "1" *-[#595959,plain]-> "segments\n*" SegmentCommitInfo     
+SegmentInfos           -[#595959,dashed]->  SegmentCommitInfo     : "«create»"
+SegmentWriteState     "1" *-[#595959,plain]-> "segUpdates\n1" BufferedUpdates       
+SegmentWriteState     "1" *-[#595959,plain]-> "fieldInfos\n1" FieldInfos            
+SegmentWriteState     "1" *-[#595959,plain]-> "segmentInfo\n1" SegmentInfo           
+@enduml

@@ -172,6 +172,7 @@ final class FrozenBufferedUpdates {
       assert privateSegment == segStates[0].reader.getOriginalSegmentInfo();
     }
 
+    // 分别应用termDelete,queryDelete,docValuesUpdates
     totalDelCount += applyTermDeletes(segStates);
     totalDelCount += applyQueryDeletes(segStates);
     totalDelCount += applyDocValuesUpdates(segStates);
@@ -392,6 +393,8 @@ final class FrozenBufferedUpdates {
         } else {
           limit = Integer.MAX_VALUE;
         }
+
+        // 创建IndexSearcher
         final IndexSearcher searcher = new IndexSearcher(readerContext.reader());
         searcher.setQueryCache(null);
         query = searcher.rewrite(query);
@@ -446,6 +449,7 @@ final class FrozenBufferedUpdates {
     }
 
     // We apply segment-private deletes on flush:
+    // 私有term删除信息在生成tip，tim时已经应用了
     assert privateSegment == null;
 
     long startNS = System.nanoTime();
@@ -455,10 +459,13 @@ final class FrozenBufferedUpdates {
     for (BufferedUpdatesStream.SegmentState segState : segStates) {
       assert segState.delGen != delGen
           : "segState.delGen=" + segState.delGen + " vs this.gen=" + delGen;
+      // 该segment是在del之后创建的
       if (segState.delGen > delGen) {
         // our deletes don't apply to this segment
         continue;
       }
+
+      // 该segment已经被merge，暂时不apply，等下一次处理merged segment时apply
       if (segState.rld.refCount() == 1) {
         // This means we are the only remaining reference to this segment, meaning
         // it was merged away while we were running, so we can safely skip running

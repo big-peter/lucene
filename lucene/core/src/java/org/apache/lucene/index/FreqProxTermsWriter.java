@@ -56,20 +56,30 @@ final class FreqProxTermsWriter extends TermsHash {
     if (state.segUpdates != null && state.segUpdates.deleteTerms.size() > 0) {
       Map<Term, Integer> segDeletes = state.segUpdates.deleteTerms;
       List<Term> deleteTerms = new ArrayList<>(segDeletes.keySet());
+
+      // 排序term
       Collections.sort(deleteTerms);
+
       FrozenBufferedUpdates.TermDocsIterator iterator =
           new FrozenBufferedUpdates.TermDocsIterator(fields, true);
       for (Term deleteTerm : deleteTerms) {
+        // 获取field中包含term的postings，即docId列表
         DocIdSetIterator postings = iterator.nextTerm(deleteTerm.field(), deleteTerm.bytes());
         if (postings != null) {
+          // 获取删除操作应用的最大docID
           int delDocLimit = segDeletes.get(deleteTerm);
           assert delDocLimit < PostingsEnum.NO_MORE_DOCS;
           int doc;
+
+          // postings已排序
           while ((doc = postings.nextDoc()) < delDocLimit) {
+            // 如果liveDocs还没初始化，先初始化
             if (state.liveDocs == null) {
               state.liveDocs = new FixedBitSet(state.segmentInfo.maxDoc());
               state.liveDocs.set(0, state.segmentInfo.maxDoc());
             }
+
+            // 从liveDocs中将该doc移除
             if (state.liveDocs.get(doc)) {
               state.delCountOnFlush++;
               state.liveDocs.clear(doc);
@@ -110,7 +120,10 @@ final class FreqProxTermsWriter extends TermsHash {
     CollectionUtil.introSort(allFields);
 
     Fields fields = new FreqProxFields(allFields);
+
+    // 应用term删除信息
     applyDeletes(state, fields);
+
     if (sortMap != null) {
       final Sorter.DocMap docMap = sortMap;
       final FieldInfos infos = state.fieldInfos;

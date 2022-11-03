@@ -1,0 +1,200 @@
+@startuml
+
+!theme plain
+top to bottom direction
+skinparam linetype ortho
+
+class DocumentsWriter {
+  - closed: boolean
+  - currentFullFlushDelQueue: DocumentsWriterDeleteQueue
+  - infoStream: InfoStream
+  - flushNotifications: FlushNotifications
+  - pendingChangesInCurrentFullFlush: boolean
+  - ticketQueue: DocumentsWriterFlushQueue
+  ~ flushControl: DocumentsWriterFlushControl
+  - numDocsInRAM: AtomicInteger
+  ~ perThreadPool: DocumentsWriterPerThreadPool
+  - pendingNumDocs: AtomicLong
+  - config: LiveIndexWriterConfig
+  ~ deleteQueue: DocumentsWriterDeleteQueue
+}
+class DocumentsWriterDeleteQueue {
+  ~ generation: long
+  - previousMaxSeqId: LongSupplier
+  - tail: Node<?>
+  ~ globalBufferLock: ReentrantLock
+  - startSeqNo: long
+  - maxSeqNo: long
+  - globalBufferedUpdates: BufferedUpdates
+  - infoStream: InfoStream
+  - closed: boolean
+  - nextSeqNo: AtomicLong
+  - globalSlice: DeleteSlice
+  - advanced: boolean
+}
+class DocumentsWriterFlushControl {
+  - fullFlushMarkDone: boolean
+  - closed: boolean
+  - documentsWriter: DocumentsWriter
+  - numPending: int
+  - flushPolicy: FlushPolicy
+  - flushBytes: long
+  - peakDelta: long
+  - maxConfiguredRamBuffer: double
+  - numDocsSinceStalled: int
+  - config: LiveIndexWriterConfig
+  ~ stallControl: DocumentsWriterStallControl
+  - flushQueue: Queue<DocumentsWriterPerThread>
+  - infoStream: InfoStream
+  - hardMaxBytesPerDWPT: long
+  - fullFlush: boolean
+  - peakNetBytes: long
+  - stallStartNS: long
+  - blockedFlushes: Queue<DocumentsWriterPerThread>
+  - flushingWriters: List<DocumentsWriterPerThread>
+  - flushDeletes: AtomicBoolean
+  - peakActiveBytes: long
+  - perThreadPool: DocumentsWriterPerThreadPool
+  - activeBytes: long
+  - flushByRAMWasDisabled: boolean
+  - peakFlushBytes: long
+}
+class DocumentsWriterFlushQueue {
+  - queue: Queue<FlushTicket>
+  - ticketCount: AtomicInteger
+  - purgeLock: ReentrantLock
+}
+class DocumentsWriterPerThread {
+  ~ deleteQueue: DocumentsWriterDeleteQueue
+  - deleteDocIDs: int[]
+  - pendingUpdates: BufferedUpdates
+  - deleteSlice: DeleteSlice
+  - pendingNumDocs: AtomicLong
+  - numDocsInRAM: int
+  - numDeletedDocIds: int
+  - INFO_VERBOSE: boolean
+  ~ directory: TrackingDirectoryWrapper
+  - indexWriterConfig: LiveIndexWriterConfig
+  - aborted: boolean
+  - enableTestPoints: boolean
+  - fieldInfos: Builder
+  - infoStream: InfoStream
+  - abortingException: Throwable
+  - indexingChain: IndexingChain
+  - nf: NumberFormat
+  - lock: ReentrantLock
+  ~ codec: Codec
+  - hasFlushed: SetOnce<Boolean>
+  - segmentInfo: SegmentInfo
+  - lastCommittedBytesUsed: long
+  - flushPending: SetOnce<Boolean>
+  - filesToDelete: Set<String>
+}
+class DocumentsWriterPerThreadPool {
+  - freeList: ApproximatePriorityQueue<DocumentsWriterPerThread>
+  - dwpts: Set<DocumentsWriterPerThread>
+  - closed: boolean
+  - takenWriterPermits: int
+  - dwptFactory: Supplier<DocumentsWriterPerThread>
+}
+class IndexWriter {
+  - directory: Directory
+  - flushCount: AtomicInteger
+  - directoryOrig: Directory
+  - closing: boolean
+  - writeDocValuesLock: ReentrantLock
+  - commitLock: Object
+  - flushDeletesCount: AtomicInteger
+  + SOURCE_ADDINDEXES_READERS: String
+  - pendingCommit: SegmentInfos
+  - eventQueue: EventQueue
+  - segmentsToMerge: Map<SegmentCommitInfo, Boolean>
+  - mergeMaxNumSegments: int
+  - changeCount: AtomicLong
+  + MAX_TERM_LENGTH: int
+  ~ docWriter: DocumentsWriter
+  - enableTestPoints: boolean
+  - segmentInfos: SegmentInfos
+  - pendingSeqNo: long
+  - bufferedUpdatesStream: BufferedUpdatesStream
+  + MAX_POSITION: int
+  - pendingMerges: Deque<OneMerge>
+  - mergingSegments: HashSet<SegmentCommitInfo>
+  - flushNotifications: FlushNotifications
+  - mergeSource: MergeSource
+  - actualMaxDocs: int
+  - UNBOUNDED_MAX_MERGE_SEGMENTS: int
+  + WRITE_LOCK_NAME: String
+  ~ globalFieldNumberMap: FieldNumbers
+  - mergeFinishedGen: AtomicLong
+  - rollbackSegments: List<SegmentCommitInfo>
+  - runningAddIndexesMerges: Set<SegmentMerger>
+  - writeLock: Lock
+  - eventListener: IndexWriterEventListener
+  - config: LiveIndexWriterConfig
+  - mergeExceptions: List<OneMerge>
+  - maybeMerge: AtomicBoolean
+  + SOURCE: String
+  + SOURCE_FLUSH: String
+  - pendingCommitChangeCount: long
+  + SOURCE_MERGE: String
+  - deleter: IndexFileDeleter
+  - infoStream: InfoStream
+  - softDeletesEnabled: boolean
+  - merges: Merges
+  - lastCommitChangeCount: long
+  - filesToCommit: Collection<String>
+  - mergeScheduler: MergeScheduler
+  - pendingNumDocs: AtomicLong
+  - didMessageState: boolean
+  - commitUserData: Iterable<Entry<String, String>>
+  + MAX_DOCS: int
+  - fullFlushLock: Object
+  - tragedy: AtomicReference<Throwable>
+  - closed: boolean
+  - runningMerges: Set<OneMerge>
+  - startCommitTime: long
+  - readerPool: ReaderPool
+  + MAX_STORED_STRING_LENGTH: int
+  - mergeGen: long
+}
+class IndexingChain {
+  - hasHitAbortingException: boolean
+  - fields: PerField[]
+  ~ termVectorsWriter: TermVectorsConsumer
+  - indexCreatedVersionMajor: int
+  - nextFieldGen: long
+  - byteBlockAllocator: Allocator
+  - abortingExceptionConsumer: Consumer<Throwable>
+  ~ termsHash: TermsHash
+  - indexWriterConfig: LiveIndexWriterConfig
+  - fieldHash: PerField[]
+  ~ bytesUsed: Counter
+  ~ storedFieldsConsumer: StoredFieldsConsumer
+  - hashMask: int
+  - totalFieldCount: int
+  ~ docValuesBytePool: ByteBlockPool
+  ~ fieldInfos: Builder
+  - infoStream: InfoStream
+  - docFields: PerField[]
+}
+
+DocumentsWriter               -[#595959,dashed]->  DocumentsWriterDeleteQueue   : "«create»"
+DocumentsWriter              "1" *-[#595959,plain]-> "deleteQueue\n1" DocumentsWriterDeleteQueue   
+DocumentsWriter              "1" *-[#595959,plain]-> "flushControl\n1" DocumentsWriterFlushControl  
+DocumentsWriter               -[#595959,dashed]->  DocumentsWriterFlushControl  : "«create»"
+DocumentsWriter              "1" *-[#595959,plain]-> "ticketQueue\n1" DocumentsWriterFlushQueue    
+DocumentsWriter               -[#595959,dashed]->  DocumentsWriterFlushQueue    : "«create»"
+DocumentsWriter               -[#595959,dashed]->  DocumentsWriterPerThread     : "«create»"
+DocumentsWriter               -[#595959,dashed]->  DocumentsWriterPerThreadPool : "«create»"
+DocumentsWriter              "1" *-[#595959,plain]-> "perThreadPool\n1" DocumentsWriterPerThreadPool 
+DocumentsWriterFlushControl  "1" *-[#595959,plain]-> "documentsWriter\n1" DocumentsWriter              
+DocumentsWriterFlushControl  "1" *-[#595959,plain]-> "flushQueue\n*" DocumentsWriterPerThread     
+DocumentsWriterFlushControl  "1" *-[#595959,plain]-> "perThreadPool\n1" DocumentsWriterPerThreadPool 
+DocumentsWriterPerThread     "1" *-[#595959,plain]-> "deleteQueue\n1" DocumentsWriterDeleteQueue   
+DocumentsWriterPerThread      -[#595959,dashed]->  IndexingChain                : "«create»"
+DocumentsWriterPerThread     "1" *-[#595959,plain]-> "indexingChain\n1" IndexingChain                
+DocumentsWriterPerThreadPool "1" *-[#595959,plain]-> "dwpts\n*" DocumentsWriterPerThread     
+IndexWriter                   -[#595959,dashed]->  DocumentsWriter              : "«create»"
+IndexWriter                  "1" *-[#595959,plain]-> "docWriter\n1" DocumentsWriter              
+@enduml

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>JAVA</ID>
+  <OriginalElement>org.apache.lucene.index.DocumentsWriterPerThread.FlushedSegment</OriginalElement>
+  <nodes>
+    <node x="116.5" y="-14.0">org.apache.lucene.index.BufferedUpdatesStream.SegmentState</node>
+    <node x="106.0" y="107.0">org.apache.lucene.index.DocumentsWriterPerThread.FlushedSegment</node>
+    <node x="540.5" y="49.0">org.apache.lucene.index.SegmentInfo</node>
+    <node x="767.0" y="107.0">org.apache.lucene.index.BufferedUpdates</node>
+    <node x="-180.0" y="107.0">org.apache.lucene.index.FrozenBufferedUpdates</node>
+    <node x="295.5" y="188.25">org.apache.lucene.index.ReadersAndUpdates</node>
+    <node x="-154.0" y="-14.0">org.apache.lucene.index.SegmentInfos</node>
+    <node x="338.0" y="107.0">org.apache.lucene.index.FieldInfos</node>
+    <node x="-131.0" y="165.0">org.apache.lucene.index.DocumentsWriterFlushQueue.FlushTicket</node>
+    <node x="-167.0" y="49.0">org.apache.lucene.index.SegmentCommitInfo</node>
+    <node x="514.0" y="107.0">org.apache.lucene.index.SegmentWriteState</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="org.apache.lucene.index.SegmentInfos" target="org.apache.lucene.index.SegmentCommitInfo" relationship="TO_MANY">
+      <point x="-39.5" y="14.0" />
+      <point x="-52.5" y="-14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.FrozenBufferedUpdates" target="org.apache.lucene.index.SegmentCommitInfo" relationship="TO_ONE">
+      <point x="0.0" y="-14.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.ReadersAndUpdates" target="org.apache.lucene.index.SegmentCommitInfo" relationship="TO_ONE">
+      <point x="-105.5" y="8.25" />
+      <point x="-197.5" y="210.5" />
+      <point x="-197.5" y="63.0" />
+      <point x="-105.0" y="0.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.SegmentCommitInfo" target="org.apache.lucene.index.SegmentInfo" relationship="TO_ONE">
+      <point x="105.0" y="-0.0" />
+      <point x="-75.0" y="-0.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.SegmentInfos" target="org.apache.lucene.index.SegmentCommitInfo" relationship="CREATE">
+      <point x="39.5" y="14.0" />
+      <point x="-35.5" y="34.0" />
+      <point x="-9.5" y="34.0" />
+      <point x="52.5" y="-14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterFlushQueue.FlushTicket" target="org.apache.lucene.index.FrozenBufferedUpdates" relationship="TO_ONE">
+      <point x="0.0" y="-14.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.BufferedUpdatesStream.SegmentState" target="org.apache.lucene.index.ReadersAndUpdates" relationship="TO_ONE">
+      <point x="80.5" y="0.0" />
+      <point x="967.5" y="0.0" />
+      <point x="967.5" y="235.5" />
+      <point x="401.0" y="235.5" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterFlushQueue.FlushTicket" target="org.apache.lucene.index.DocumentsWriterPerThread.FlushedSegment" relationship="TO_ONE">
+      <point x="0.0" y="-14.0" />
+      <point x="-62.0" y="155.0" />
+      <point x="197.0" y="155.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterPerThread.FlushedSegment" target="org.apache.lucene.index.FieldInfos" relationship="TO_ONE">
+      <point x="91.0" y="-0.0" />
+      <point x="-63.0" y="-0.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterPerThread.FlushedSegment" target="org.apache.lucene.index.FrozenBufferedUpdates" relationship="TO_ONE">
+      <point x="-91.0" y="7.0" />
+      <point x="118.0" y="7.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.SegmentWriteState" target="org.apache.lucene.index.BufferedUpdates" relationship="TO_ONE">
+      <point x="101.5" y="-0.0" />
+      <point x="-91.5" y="-0.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.SegmentWriteState" target="org.apache.lucene.index.SegmentInfo" relationship="TO_ONE">
+      <point x="0.0" y="-14.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterPerThread.FlushedSegment" target="org.apache.lucene.index.SegmentCommitInfo" relationship="TO_ONE">
+      <point x="0.0" y="-14.0" />
+      <point x="197.0" y="97.0" />
+      <point x="-62.0" y="97.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.SegmentWriteState" target="org.apache.lucene.index.FieldInfos" relationship="TO_ONE">
+      <point x="-101.5" y="-0.0" />
+      <point x="63.0" y="-0.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.ReadersAndUpdates" target="org.apache.lucene.index.FieldInfos" relationship="CREATE">
+      <point x="0.0" y="-14.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.ReadersAndUpdates" target="org.apache.lucene.index.SegmentWriteState" relationship="CREATE">
+      <point x="105.5" y="0.0" />
+      <point x="615.5" y="202.25" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DocumentsWriterPerThread.FlushedSegment" target="org.apache.lucene.index.FrozenBufferedUpdates" relationship="CREATE">
+      <point x="-91.0" y="-7.0" />
+      <point x="118.0" y="-7.0" />
+    </edge>
+  </edges>
+  <settings layout="Orthogonal Groups" zoom="1.3347826086956522" showDependencies="true" x="464.0" y="99.49999999999994" />
+  <SelectedNodes />
+  <Categories>
+    <Category>Inner Classes</Category>
+  </Categories>
+  <SCOPE>All</SCOPE>
+  <VISIBILITY>private</VISIBILITY>
+</Diagram>
+

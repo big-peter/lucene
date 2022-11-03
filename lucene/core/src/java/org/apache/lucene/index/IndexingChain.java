@@ -236,14 +236,20 @@ final class IndexingChain implements Accountable {
 
   Sorter.DocMap flush(SegmentWriteState state) throws IOException {
 
-    // 1. 处理index sort
+    // 处理index sort
+    /*
+    DocMap是类Sorter的内部类，而sortMap则是在源码中Sorter.DocMap类的一个对象名。
+    当我们在生成IndexWriter对象时，可以通过IndexWriterConfig.setIndexSort(Sort)的方法来定义一个排序规则，在生成索引文件的过程中，使得
+    一个段内的所有索引文件中的文档根据该规则进行排序，当然并不是真正的排序，而是生成一个映射关系sortMap（见Collector（三）中的预备知识），
+    sortMap描述了文档之间的顺序.
+     */
     // NOTE: caller (DocumentsWriterPerThread) handles
     // aborting on any exception from this method
     Sorter.DocMap sortMap = maybeSortSegment(state);
 
     int maxDoc = state.segmentInfo.maxDoc();
     long t0 = System.nanoTime();
-    // 2. flush norm 数据
+    // 1. flush norm 数据: .nvd .nvm
     writeNorms(state, sortMap);
     if (infoStream.isEnabled("IW")) {
       infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write norms");
@@ -257,21 +263,21 @@ final class IndexingChain implements Accountable {
             state.segmentSuffix);
 
     t0 = System.nanoTime();
-    // 3. flush docValue 数据
+    // 2. flush docValue 数据: .dvd .dvm
     writeDocValues(state, sortMap);
     if (infoStream.isEnabled("IW")) {
       infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write docValues");
     }
 
     t0 = System.nanoTime();
-    // 4. flush point 数据
+    // 3. flush point 数据: .kdd .kdi .kdm
     writePoints(state, sortMap);
     if (infoStream.isEnabled("IW")) {
       infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write points");
     }
 
     t0 = System.nanoTime();
-    // 5. flush knn 数据
+    // 4. flush knn 数据: .vem .vec .vex
     writeVectors(state, sortMap);
     if (infoStream.isEnabled("IW")) {
       infoStream.message("IW", ((System.nanoTime() - t0) / 1000000) + " msec to write vectors");
@@ -279,7 +285,7 @@ final class IndexingChain implements Accountable {
 
     // it's possible all docs hit non-aborting exceptions...
     t0 = System.nanoTime();
-    // 6. flush stored field数据
+    // 5. flush stored field数据: .fdx .fdt .fdm
     storedFieldsConsumer.finish(maxDoc);
     storedFieldsConsumer.flush(state, sortMap);
     if (infoStream.isEnabled("IW")) {
@@ -308,7 +314,7 @@ final class IndexingChain implements Accountable {
         // Use the merge instance in order to reuse the same IndexInput for all terms
         normsMergeInstance = norms.getMergeInstance();
       }
-      // 7. flush 倒排表数据
+      // 6. flush 倒排表数据 : .tim .tip .tmd .doc .pos .pay .tvd .tvx .tvm
       termsHash.flush(fieldsToFlush, state, sortMap, normsMergeInstance);
     }
     if (infoStream.isEnabled("IW")) {
@@ -317,7 +323,7 @@ final class IndexingChain implements Accountable {
           ((System.nanoTime() - t0) / 1000000) + " msec to write postings and finish vectors");
     }
 
-    // 8. flush field数据
+    // 7. flush field数据: .fnm
     // Important to save after asking consumer to flush so
     // consumer can alter the FieldInfo* if necessary.  EG,
     // FreqProxTermsWriter does this with

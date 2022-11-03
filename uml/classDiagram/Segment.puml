@@ -1,0 +1,42 @@
+@startuml
+
+!theme plain
+top to bottom direction
+skinparam linetype ortho
+
+class BufferedUpdates
+class FieldInfos
+class FlushTicket
+class FlushedSegment
+class FrozenBufferedUpdates
+class ReadersAndUpdates
+class SegmentCommitInfo
+class SegmentInfo
+class SegmentInfos
+class SegmentReader
+class SegmentState
+class SegmentWriteState
+
+FlushTicket           "1" *-[#595959,plain]-> "segment\n1" FlushedSegment        
+FlushTicket           "1" *-[#595959,plain]-> "frozenUpdates\n1" FrozenBufferedUpdates 
+FlushedSegment        "1" *-[#595959,plain]-> "fieldInfos\n1" FieldInfos            
+FlushedSegment        "1" *-[#595959,plain]-> "segmentUpdates\n1" FrozenBufferedUpdates 
+FlushedSegment         -[#595959,dashed]->  FrozenBufferedUpdates : "«create»"
+FlushedSegment        "1" *-[#595959,plain]-> "segmentInfo\n1" SegmentCommitInfo     
+FrozenBufferedUpdates "1" *-[#595959,plain]-> "privateSegment\n1" SegmentCommitInfo     
+ReadersAndUpdates      -[#595959,dashed]->  FieldInfos            : "«create»"
+ReadersAndUpdates     "1" *-[#595959,plain]-> "info\n1" SegmentCommitInfo     
+ReadersAndUpdates     "1" *-[#595959,plain]-> "reader\n1" SegmentReader         
+ReadersAndUpdates      -[#595959,dashed]->  SegmentReader         : "«create»"
+ReadersAndUpdates      -[#595959,dashed]->  SegmentWriteState     : "«create»"
+SegmentCommitInfo     "1" *-[#595959,plain]-> "info\n1" SegmentInfo           
+SegmentInfos          "1" *-[#595959,plain]-> "segments\n*" SegmentCommitInfo     
+SegmentInfos           -[#595959,dashed]->  SegmentCommitInfo     : "«create»"
+SegmentReader         "1" *-[#595959,plain]-> "fieldInfos\n1" FieldInfos            
+SegmentReader         "1" *-[#595959,plain]-> "si\n1" SegmentCommitInfo     
+SegmentState          "1" *-[#595959,plain]-> "rld\n1" ReadersAndUpdates     
+SegmentState          "1" *-[#595959,plain]-> "reader\n1" SegmentReader         
+SegmentWriteState     "1" *-[#595959,plain]-> "segUpdates\n1" BufferedUpdates       
+SegmentWriteState     "1" *-[#595959,plain]-> "fieldInfos\n1" FieldInfos            
+SegmentWriteState     "1" *-[#595959,plain]-> "segmentInfo\n1" SegmentInfo           
+@enduml

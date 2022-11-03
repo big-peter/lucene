@@ -102,6 +102,7 @@ final class DocumentsWriterFlushQueue {
     while (true) {
       final FlushTicket head;
       final boolean canPublish;
+      // 非线程安全queue，其他线程会add。加锁保证并发安全
       synchronized (this) {
         head = queue.peek();
         canPublish = head != null && head.canPublish(); // do this synced

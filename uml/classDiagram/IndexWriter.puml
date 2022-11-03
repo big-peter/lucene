@@ -1,0 +1,34 @@
+@startuml
+
+!theme plain
+top to bottom direction
+skinparam linetype ortho
+
+class DocumentsWriter
+class DocumentsWriterDeleteQueue
+class DocumentsWriterFlushControl
+class DocumentsWriterFlushQueue
+class DocumentsWriterPerThread
+class DocumentsWriterPerThreadPool
+class IndexWriter
+class IndexingChain
+
+DocumentsWriter               -[#595959,dashed]->  DocumentsWriterDeleteQueue   : "«create»"
+DocumentsWriter              "1" *-[#595959,plain]-> "deleteQueue\n1" DocumentsWriterDeleteQueue   
+DocumentsWriter              "1" *-[#595959,plain]-> "flushControl\n1" DocumentsWriterFlushControl  
+DocumentsWriter               -[#595959,dashed]->  DocumentsWriterFlushControl  : "«create»"
+DocumentsWriter              "1" *-[#595959,plain]-> "ticketQueue\n1" DocumentsWriterFlushQueue    
+DocumentsWriter               -[#595959,dashed]->  DocumentsWriterFlushQueue    : "«create»"
+DocumentsWriter               -[#595959,dashed]->  DocumentsWriterPerThread     : "«create»"
+DocumentsWriter               -[#595959,dashed]->  DocumentsWriterPerThreadPool : "«create»"
+DocumentsWriter              "1" *-[#595959,plain]-> "perThreadPool\n1" DocumentsWriterPerThreadPool 
+DocumentsWriterFlushControl  "1" *-[#595959,plain]-> "documentsWriter\n1" DocumentsWriter              
+DocumentsWriterFlushControl  "1" *-[#595959,plain]-> "flushQueue\n*" DocumentsWriterPerThread     
+DocumentsWriterFlushControl  "1" *-[#595959,plain]-> "perThreadPool\n1" DocumentsWriterPerThreadPool 
+DocumentsWriterPerThread     "1" *-[#595959,plain]-> "deleteQueue\n1" DocumentsWriterDeleteQueue   
+DocumentsWriterPerThread      -[#595959,dashed]->  IndexingChain                : "«create»"
+DocumentsWriterPerThread     "1" *-[#595959,plain]-> "indexingChain\n1" IndexingChain                
+DocumentsWriterPerThreadPool "1" *-[#595959,plain]-> "dwpts\n*" DocumentsWriterPerThread     
+IndexWriter                   -[#595959,dashed]->  DocumentsWriter              : "«create»"
+IndexWriter                  "1" *-[#595959,plain]-> "docWriter\n1" DocumentsWriter              
+@enduml

@@ -234,6 +234,7 @@ public abstract class IndexReader implements Closeable {
    */
   public final boolean tryIncRef() {
     int count;
+    // cas+自旋
     while ((count = refCount.get()) > 0) {
       if (refCount.compareAndSet(count, count + 1)) {
         return true;
