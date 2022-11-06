@@ -93,6 +93,8 @@ public final class StandardDirectoryReader extends DirectoryReader {
             readers[i] =
                 new SegmentReader(sis.info(i), sis.getIndexCreatedVersionMajor(), IOContext.READ);
           }
+
+          // 构建DirectoryReader
           // This may throw CorruptIndexException if there are too many docs, so
           // it must be inside try clause so we close readers in that case:
           DirectoryReader reader =

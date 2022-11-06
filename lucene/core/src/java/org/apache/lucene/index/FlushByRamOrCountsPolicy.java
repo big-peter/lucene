@@ -44,6 +44,7 @@ package org.apache.lucene.index;
  */
 class FlushByRamOrCountsPolicy extends FlushPolicy {
 
+  // 如果删除信息占用内存超过配置值，设置flush delete
   @Override
   public void onDelete(DocumentsWriterFlushControl control, DocumentsWriterPerThread perThread) {
     if ((flushOnRAM()
@@ -60,13 +61,17 @@ class FlushByRamOrCountsPolicy extends FlushPolicy {
     }
   }
 
+  // 根据docCount和内存使用判断是否需要flush
   @Override
   public void onInsert(DocumentsWriterFlushControl control, DocumentsWriterPerThread perThread) {
+    // 根据dwpt保存的文档数判断是否需要flush。注意，此处是判断该dwpt
     if (flushOnDocCount()
         && perThread.getNumDocsInRAM() >= indexWriterConfig.getMaxBufferedDocs()) {
       // Flush this state by num docs
       control.setFlushPending(perThread);
-    } else if (flushOnRAM()) { // flush by RAM
+    }
+    // 根据所有dwpt占用的内存判断是否需要flush。注意，如果需要flush，会选择占用内存最大的dwpt
+    else if (flushOnRAM()) { // flush by RAM
       final long limit = (long) (indexWriterConfig.getRAMBufferSizeMB() * 1024.d * 1024.d);
       final long totalRam = control.activeBytes() + control.getDeleteBytesUsed();
       if (totalRam >= limit) {

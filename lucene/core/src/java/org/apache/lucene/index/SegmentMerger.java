@@ -104,8 +104,12 @@ final class SegmentMerger {
     if (!shouldMerge()) {
       throw new IllegalStateException("Merge would result in 0 document segment");
     }
+
+    // merge多个segment的FieldInfos
     mergeFieldInfos();
 
+    // TODO wj curr
+    // merge多个segment的StoredFields
     int numMerged = mergeWithLogging(this::mergeFields, "stored fields");
     assert numMerged == mergeState.segmentInfo.maxDoc()
         : "numMerged="

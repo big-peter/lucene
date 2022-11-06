@@ -387,16 +387,20 @@ final class FrozenBufferedUpdates {
       for (int i = 0; i < deleteQueries.length; i++) {
         Query query = deleteQueries[i];
         int limit;
+
+        // private delete packet
         if (delGen == segState.delGen) {
           assert privateSegment != null;
           limit = deleteQueryLimits[i];
-        } else {
+        }
+        // global delete packet
+        else {
           // 只有主动flush时的第一个segment会产生global packet，走此path；其他都走上面path
           // global packet的limit 无限
           limit = Integer.MAX_VALUE;
         }
 
-        // 创建IndexSearcher
+        // 创建IndexSearcher；readerContext.reader()即segState.reader
         final IndexSearcher searcher = new IndexSearcher(readerContext.reader());
         searcher.setQueryCache(null);
         query = searcher.rewrite(query);
@@ -477,11 +481,14 @@ final class FrozenBufferedUpdates {
 
       FieldTermIterator iter = deleteTerms.iterator();
       BytesRef delTerm;
+      // segState.reader类型是SegmentReader
       TermDocsIterator termDocsIterator = new TermDocsIterator(segState.reader, true);
       while ((delTerm = iter.next()) != null) {
+        // 从index中获取该field中该term对应的docId列表
         final DocIdSetIterator iterator = termDocsIterator.nextTerm(iter.field(), delTerm);
         if (iterator != null) {
           int docID;
+          // global delete packet，说明该segment是flush之前已经存在的，满足条件的doc需要全部删除
           while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
             // NOTE: there is no limit check on the docID
             // when deleting by Term (unlike by Query)

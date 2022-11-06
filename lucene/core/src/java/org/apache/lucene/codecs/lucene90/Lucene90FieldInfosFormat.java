@@ -162,6 +162,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
           if (attributes.equals(lastAttributes)) {
             attributes = lastAttributes;
           }
+
           lastAttributes = attributes;
           int pointDataDimensionCount = input.readVInt();
           int pointNumBytes;

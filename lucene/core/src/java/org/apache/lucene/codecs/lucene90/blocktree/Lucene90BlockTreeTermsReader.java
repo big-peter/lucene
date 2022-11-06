@@ -160,6 +160,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
               state.segmentSuffix);
           postingsReader.init(metaIn, state);
 
+          // 解码.tmd文件
           final int numFields = metaIn.readVInt();
           if (numFields < 0) {
             throw new CorruptIndexException("invalid numFields: " + numFields, metaIn);

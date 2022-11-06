@@ -108,22 +108,30 @@ final class SegmentCoreReaders {
 
       segment = si.info.name;
 
+      // 1. 解码.fnm文件
       coreFieldInfos = codec.fieldInfosFormat().read(cfsDir, si.info, "", context);
 
       final SegmentReadState segmentReadState =
           new SegmentReadState(cfsDir, si.info, coreFieldInfos, context);
+
+      // 2. postings reader
       if (coreFieldInfos.hasPostings()) {
         final PostingsFormat format = codec.postingsFormat();
+
+        // 获取读取.doc, .pos, .pay, .tmd, .tip, .tim文件的reader，即 FieldsProducer fields
         // Ask codec for its Fields
         fields = format.fieldsProducer(segmentReadState);
         assert fields != null;
       } else {
         fields = null;
       }
+
+
       // ask codec for its Norms:
       // TODO: since we don't write any norms file if there are no norms,
       // kinda jaky to assume the codec handles the case of no norms file at all gracefully?!
 
+      // 3. norms
       if (coreFieldInfos.hasNorms()) {
         normsProducer = codec.normsFormat().normsProducer(segmentReadState);
         assert normsProducer != null;
@@ -131,12 +139,14 @@ final class SegmentCoreReaders {
         normsProducer = null;
       }
 
+      // 4. stored fields
       fieldsReaderOrig =
           si.info
               .getCodec()
               .storedFieldsFormat()
               .fieldsReader(cfsDir, si.info, coreFieldInfos, context);
 
+      // 5. term vector
       if (coreFieldInfos.hasVectors()) { // open term vector files only as needed
         termVectorsReaderOrig =
             si.info
@@ -147,12 +157,14 @@ final class SegmentCoreReaders {
         termVectorsReaderOrig = null;
       }
 
+      // 6. point
       if (coreFieldInfos.hasPointValues()) {
         pointsReader = codec.pointsFormat().fieldsReader(segmentReadState);
       } else {
         pointsReader = null;
       }
 
+      // 7. knn
       if (coreFieldInfos.hasVectorValues()) {
         knnVectorsReader = codec.knnVectorsFormat().fieldsReader(segmentReadState);
       } else {

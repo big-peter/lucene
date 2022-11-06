@@ -67,6 +67,8 @@ final class DocumentsWriterFlushQueue {
     incTickets();
     boolean success = false;
     try {
+      // 生成FlushTicket，并加入TicketQueue中
+      // 对于主动flush期间的第一个处理的dwpt，其会生成global delete packet。后续的dwpt不会生成global delete packet。
       // prepare flush freezes the global deletes - do in synced block!
       final FlushTicket ticket = new FlushTicket(dwpt.prepareFlush(), true);
       queue.add(ticket);

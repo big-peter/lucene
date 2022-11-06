@@ -55,6 +55,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
   // mark them as flushable putting them in the flushQueue ready for other threads (ie. indexing
   // threads) to help flushing
   private final Queue<DocumentsWriterPerThread> flushQueue = new LinkedList<>();
+  // 主动flush期间，触发自动flush的dwpt会添加到该队列中。（其和主动flush的dwpt拥有不同的deleteQueue）
   // only for safety reasons if a DWPT is close to the RAM limit
   private final Queue<DocumentsWriterPerThread> blockedFlushes = new LinkedList<>();
   // flushingWriters holds all currently flushing writers. There might be writers in this list that
@@ -184,6 +185,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
     return true;
   }
 
+  // 判断是否需要自动flush dwpt
   DocumentsWriterPerThread doAfterDocument(DocumentsWriterPerThread perThread, boolean isUpdate) {
     final long delta = perThread.getCommitLastBytesUsedDelta();
     synchronized (this) {
@@ -201,10 +203,12 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
          * moves the perThread memory to the flushBytes and we could be set to
          * pending during a delete
          */
+        // 已经处于flushPending状态
         if (perThread.isFlushPending()) {
           flushBytes += delta;
           assert updatePeaks(delta);
         } else {
+          // 根据文档数或内存使用判断是否需要自动flush
           activeBytes += delta;
           assert updatePeaks(delta);
           if (isUpdate) {
@@ -212,6 +216,8 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
           } else {
             flushPolicy.onInsert(this, perThread);
           }
+
+          // 判断hard内存配置是否触发自动flush
           if (!perThread.isFlushPending() && perThread.ramBytesUsed() > hardMaxBytesPerDWPT) {
             // Safety check to prevent a single DWPT exceeding its RAM limit. This
             // is super important since we can not address more than 2048 MB per DWPT
@@ -230,6 +236,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
       DocumentsWriterPerThread perThread, boolean markPending) {
     assert Thread.holdsLock(this);
     if (fullFlush) {
+      // 正在主动flush，将本次flush的dwpt加入到block队列中，并从dwpt pool中移除
       if (perThread.isFlushPending()) {
         checkoutAndBlock(perThread);
         return nextPendingFlush();
@@ -240,6 +247,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
         setFlushPending(perThread);
       }
 
+      // 加入到flushWriters列表
       if (perThread.isFlushPending()) {
         return checkOutForFlush(perThread);
       }

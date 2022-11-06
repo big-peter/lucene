@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -164,6 +165,7 @@ final class DocumentsWriter implements Closeable, Accountable {
     return seqNo;
   }
 
+  // 如果删除信息占用了太多内存, 触发delete packet的flush
   /** If buffered deletes are using too much heap, resolve them and write disk and return true. */
   private boolean applyAllDeletes() throws IOException {
     final DocumentsWriterDeleteQueue deleteQueue = this.deleteQueue;
@@ -417,9 +419,17 @@ final class DocumentsWriter implements Closeable, Accountable {
       final Iterable<? extends Iterable<? extends IndexableField>> docs,
       final DocumentsWriterDeleteQueue.Node<?> delNode)
       throws IOException {
+
+    // 如果失速(activeBytes + flushBytes > 2 * limit and activeBytes < 2 * limit, 即flush速度跟不上index速度)，或者flush queue中的dwpt个数大于配置值，帮助flush
     boolean hasEvents = preUpdate();
 
     final DocumentsWriterPerThread dwpt = flushControl.obtainAndLock();
+    try {
+      // TODO wj remove
+      TimeUnit.SECONDS.sleep(3);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
     final DocumentsWriterPerThread flushingDWPT;
     long seqNo;
 
@@ -446,6 +456,7 @@ final class DocumentsWriter implements Closeable, Accountable {
       assert dwpt.isHeldByCurrentThread() == false : "we didn't release the dwpt even on abort";
     }
 
+    // 触发自动flush
     if (postUpdate(flushingDWPT, hasEvents)) {
       seqNo = -seqNo;
     }
@@ -484,13 +495,19 @@ final class DocumentsWriter implements Closeable, Accountable {
          */
         try {
           assert assertTicketQueueModification(flushingDWPT.deleteQueue);
+
+          // 生成FlushTicket，并加入ticketQueue。第一次获取锁的dwpt会附带global delete packet。
           // Each flush is assigned a ticket in the order they acquire the ticketQueue lock
           ticket = ticketQueue.addFlushTicket(flushingDWPT);
+
           final int flushingDocsInRam = flushingDWPT.getNumDocsInRAM();
           boolean dwptSuccess = false;
           try {
+            // 生成FlushedSegment
             // flush concurrently without locking
             final FlushedSegment newSegment = flushingDWPT.flush(flushNotifications);
+
+            // 将生成的FlushedSegment加入到对应的FlushTicket中。后面再从ticketQueue消费FlushTicket时会发布此FlushedSegment
             ticketQueue.addSegment(ticket, newSegment);
             dwptSuccess = true;
           } finally {
@@ -532,13 +549,17 @@ final class DocumentsWriter implements Closeable, Accountable {
         flushControl.doAfterFlush(flushingDWPT);
       }
 
+      // 获取下一个flush的dwpt
       flushingDWPT = flushControl.nextPendingFlush();
     }
 
     if (hasEvents) {
+      // 尝试publishFlushedSegments
       flushNotifications.afterSegmentsFlushed();
     }
 
+    // 如果删除信息占用了过多内存，尝试添加删除FlushTicket，并处理FlushTicket
+    // 目的是防止留给dwpt的内存变小，从而触发自动flush创建大量的小的段
     // If deletes alone are consuming > 1/2 our RAM
     // buffer, force them all to apply now. This is to
     // prevent too-frequent flushing of a long tail of
@@ -707,9 +728,11 @@ final class DocumentsWriter implements Closeable, Accountable {
       }
       assert setFlushingDeleteQueue(null);
       if (success) {
+        // 将block queue中的dwpt移到flush queue
         // Release the flush lock
         flushControl.finishFullFlush();
       } else {
+        // 将flush queue中的dwpt保存的内存index abort掉。
         flushControl.abortFullFlushes();
       }
     } finally {

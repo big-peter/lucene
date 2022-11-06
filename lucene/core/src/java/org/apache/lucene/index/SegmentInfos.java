@@ -310,6 +310,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     return readCommit(directory, input, generation, Version.MIN_SUPPORTED_MAJOR);
   }
 
+  // 解码segments_gen文件
   /** Read the commit from the provided {@link ChecksumIndexInput}. */
   static final SegmentInfos readCommit(
       Directory directory, ChecksumIndexInput input, long generation, int minSupportedMajorVersion)
@@ -360,6 +361,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       infos.generation = generation;
       infos.lastGeneration = generation;
       infos.luceneVersion = luceneVersion;
+      // 解析segmentInfos
       parseSegmentInfos(directory, input, infos, format);
       return infos;
 
@@ -398,6 +400,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
     long totalDocs = 0;
     for (int seg = 0; seg < numSegments; seg++) {
+      // 解析SegmentCommitInfo
       String segName = input.readString();
       byte[] segmentID = new byte[StringHelper.ID_LENGTH];
       input.readBytes(segmentID, 0, segmentID.length);
@@ -543,6 +546,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
   private void write(Directory directory) throws IOException {
 
+    // inc pending gen
     long nextGeneration = getNextPendingGeneration();
     String segmentFileName =
         IndexFileNames.fileNameFromGeneration(IndexFileNames.PENDING_SEGMENTS, "", nextGeneration);
@@ -555,8 +559,10 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
 
     try {
       segnOutput = directory.createOutput(segmentFileName, IOContext.DEFAULT);
+      // 写pending_segments文件
       write(segnOutput);
       segnOutput.close();
+      // fsync pending_segments文件
       directory.sync(Collections.singleton(segmentFileName));
       success = true;
     } finally {
@@ -611,7 +617,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       out.writeVInt(minSegmentVersion.bugfix);
     }
 
-    // write infos
+    // write segmentCommit infos
     for (SegmentCommitInfo siPerCommit : this) {
       SegmentInfo si = siPerCommit.info;
       if (indexCreatedVersionMajor >= 7 && si.minVersion == null) {
@@ -897,7 +903,10 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     if (pendingCommit) {
       throw new IllegalStateException("prepareCommit was already called");
     }
+
+    // fsync目录元数据(包括size、访问时间st_atime & st_mtime等等)
     dir.syncMetaData();
+    // 写pending_segments文件
     write(dir);
   }
 
@@ -932,9 +941,14 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     try {
       final String src =
           IndexFileNames.fileNameFromGeneration(IndexFileNames.PENDING_SEGMENTS, "", generation);
+      // segments_gen文件
       dest = IndexFileNames.fileNameFromGeneration(IndexFileNames.SEGMENTS, "", generation);
+
+      // mv命令，将src重命名为dest
       dir.rename(src, dest);
+
       try {
+        // 同步目录元数据：同步分元数据同步和数据同步（unix系统编程设计）
         dir.syncMetaData();
         successRenameAndSync = true;
       } finally {

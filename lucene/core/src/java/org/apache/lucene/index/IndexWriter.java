@@ -413,6 +413,7 @@ public class IndexWriter
 
   private final boolean softDeletesEnabled;
 
+  // 保存所有事件的执行/消费逻辑
   private final DocumentsWriter.FlushNotifications flushNotifications =
       new DocumentsWriter.FlushNotifications() {
         @Override
@@ -511,6 +512,8 @@ public class IndexWriter
     // this method is called:
     readerPool.enableReaderPooling();
     StandardDirectoryReader r = null;
+
+    // full flush
     doBeforeFlush();
     boolean anyChanges;
     final long maxFullFlushMergeWaitMillis = config.getMaxFullFlushMergeWaitMillis();
@@ -948,7 +951,7 @@ public class IndexWriter
 
     boolean success = false;
     try {
-      directoryOrig = d;
+      directoryOrig = d;  // default FSDirectory
       directory = new LockValidatingDirectoryWrapper(d, writeLock);
       mergeScheduler = config.getMergeScheduler();
       mergeScheduler.initialize(infoStream, directoryOrig);
@@ -1002,6 +1005,7 @@ public class IndexWriter
         // segments_N file with no segments:
         final SegmentInfos sis = new SegmentInfos(config.getIndexCreatedVersionMajor());
         if (indexExists) {
+          // 将目录中已经存在的段信息解析并加载到内存中
           final SegmentInfos previous = SegmentInfos.readLatestCommit(directory);
           sis.updateGenerationVersionAndCounter(previous);
         }
@@ -2760,13 +2764,14 @@ public class IndexWriter
 
   private synchronized long publishFrozenUpdates(FrozenBufferedUpdates packet) {
     assert packet != null && packet.any();
-    // 获取delGen
+    // 加入到bufferedUpdatesStream.updates，并获取delGen
     long nextGen = bufferedUpdatesStream.push(packet);
 
     // 添加到eventQueue中
     // Do this as an event so it applies higher in the stack when we are not holding
     // DocumentsWriterFlushQueue.purgeLock:
     eventQueue.add(
+        // 发布delete packet的事件执行逻辑
         w -> {
           try {
             // we call tryApply here since we don't want to block if a refresh or a flush is already
@@ -2834,6 +2839,8 @@ public class IndexWriter
 
       // 设置改segment的delGen
       newSegment.setBufferedDeletesGen(nextGen);
+
+      // 将newSegment加入segmentInfos
       segmentInfos.add(newSegment);
       published = true;
       checkpoint();
@@ -3409,6 +3416,8 @@ public class IndexWriter
 
   private long prepareCommitInternal() throws IOException {
     startCommitTime = System.nanoTime();
+
+    // 获取commit lock
     synchronized (commitLock) {
       ensureOpen(false);
       if (infoStream.isEnabled("IW")) {
@@ -3440,6 +3449,7 @@ public class IndexWriter
 
       try {
 
+        // 下面是full flush的流程
         synchronized (fullFlushLock) {
           boolean flushSuccess = false;
           boolean success = false;
@@ -3461,8 +3471,12 @@ public class IndexWriter
             flushSuccess = true;
 
             applyAllDeletesAndUpdates();
+
+
             synchronized (this) {
+              // 写.liv文件
               writeReaderPool(true);
+
               if (changeCount.get() != lastCommitChangeCount) {
                 // There are changes to commit, so we will write a new segments_N in startCommit.
                 // The act of committing is itself an NRT-visible change (an NRT reader that was
@@ -3480,12 +3494,14 @@ public class IndexWriter
                 segmentInfos.setUserData(userData, false);
               }
 
+              // 临界区内获取segmentInfos的快照
               // Must clone the segmentInfos while we still
               // hold fullFlushLock and while sync'd so that
               // no partial changes (eg a delete w/o
               // corresponding add from an updateDocument) can
               // sneak into the commit point:
               toCommit = segmentInfos.clone();
+              // 更新pendingCommitChangeCount为最新的changeCount
               pendingCommitChangeCount = changeCount.get();
               // This protects the segmentInfos we are now going
               // to commit.  This is important in case, eg, while
@@ -3521,12 +3537,17 @@ public class IndexWriter
       } finally {
         maybeCloseOnTragicEvent();
       }
+      // full flush结束
 
+      // merge相关
       if (pointInTimeMerges != null) {
         if (infoStream.isEnabled("IW")) {
           infoStream.message(
               "IW", "now run merges during commit: " + pointInTimeMerges.segString(directory));
         }
+
+        // 等待merge完成
+        // begin merge hook func
         eventListener.beginMergeOnFullFlush(pointInTimeMerges);
 
         mergeScheduler.merge(mergeSource, MergeTrigger.COMMIT);
@@ -3535,6 +3556,8 @@ public class IndexWriter
         if (infoStream.isEnabled("IW")) {
           infoStream.message("IW", "done waiting for merges during commit");
         }
+
+        // end merge hook func
         eventListener.endMergeOnFullFlush(pointInTimeMerges);
 
         synchronized (this) {
@@ -3543,19 +3566,23 @@ public class IndexWriter
           stopAddingMergedSegments.set(true);
         }
       }
+
+      // 设置filesToCommit
       // do this after handling any pointInTimeMerges since the files will have changed if any
-      // merges
-      // did complete
+      // merges did complete
       filesToCommit = toCommit.files(false);
       try {
         if (anyChanges) {
           maybeMerge.set(true);
         }
+
+        // 将索引文件fsync到磁盘，并写pending_segments文件
+        // 同时会将toCommit设置成pendingCommit
         startCommit(toCommit);
         if (pendingCommit == null) {
           return -1;
         } else {
-          return seqNo;
+          return seqNo;  // full flush返回的segNo
         }
       } catch (Throwable t) {
         synchronized (this) {
@@ -3815,6 +3842,7 @@ public class IndexWriter
   // order is commitLock -> IW
   private final Object commitLock = new Object();
 
+  // 先触发一次主动flush，然后merge，最后生成segments文件并将索引文件fsync到磁盘
   /**
    * Commits all pending changes (added and deleted documents, segment merges, added indexes, etc.)
    * to the index, and syncs all referenced index files, such that a reader will see the changes and
@@ -3868,6 +3896,7 @@ public class IndexWriter
 
     long seqNo;
 
+    // 获取commit lock
     synchronized (commitLock) {
       ensureOpen(false);
 
@@ -3875,21 +3904,28 @@ public class IndexWriter
         infoStream.message("IW", "commit: enter lock");
       }
 
+      // 如果还没有执行第一阶段
       if (pendingCommit == null) {
         if (infoStream.isEnabled("IW")) {
           infoStream.message("IW", "commit: now prepare");
         }
+        // full flush，merge， fsync
         seqNo = prepareCommitInternal();
-      } else {
+      }
+      // 已经执行了第一阶段
+      else {
         if (infoStream.isEnabled("IW")) {
           infoStream.message("IW", "commit: already prepared");
         }
         seqNo = pendingSeqNo;
       }
 
+      // 将pending_segments文件重命名为segments文件，并设置checkpoint，backup
       finishCommit();
     }
 
+
+    // 触发merge
     // we must do this outside of the commitLock else we can deadlock:
     if (maybeMerge.getAndSet(false)) {
       maybeMerge(mergePolicy, MergeTrigger.FULL_FLUSH, UNBOUNDED_MAX_MERGE_SEGMENTS);
@@ -3905,6 +3941,7 @@ public class IndexWriter
     String committedSegmentsFileName = null;
 
     try {
+      // IW加锁
       synchronized (this) {
         ensureOpen(false);
 
@@ -3921,6 +3958,7 @@ public class IndexWriter
               infoStream.message("IW", "commit: pendingCommit != null");
             }
 
+            // 将pending_segments文件重命名为segments文件
             committedSegmentsFileName = pendingCommit.finishCommit(directory);
 
             // we committed, if anything goes wrong after this, we are screwed and it's a tragedy:
@@ -3931,6 +3969,7 @@ public class IndexWriter
                   "IW", "commit: done writing segments file \"" + committedSegmentsFileName + "\"");
             }
 
+            // TODO wj checkpoint机制
             // NOTE: don't use this.checkpoint() here, because
             // we do not want to increment changeCount:
             deleter.checkpoint(pendingCommit, true);
@@ -3939,8 +3978,9 @@ public class IndexWriter
             segmentInfos.updateGeneration(pendingCommit);
 
             lastCommitChangeCount = pendingCommitChangeCount;
-            rollbackSegments = pendingCommit.createBackupSegmentInfos();
 
+            // backup
+            rollbackSegments = pendingCommit.createBackupSegmentInfos();
           } finally {
             notifyAll();
             pendingCommit = null;
@@ -4016,7 +4056,9 @@ public class IndexWriter
           "this writer hit an unrecoverable error; cannot flush", tragedy.get());
     }
 
+    // before flush hook func
     doBeforeFlush();
+
     testPoint("startDoFlush");
     boolean success = false;
     try {
@@ -4027,31 +4069,45 @@ public class IndexWriter
       }
       boolean anyChanges;
 
+      // 获取full flush lock，保证只有一个线程执行full flush
       synchronized (fullFlushLock) {
         boolean flushSuccess = false;
         try {
+          // 调用DocumentsWriter的flush all dwpt方法，将flushed segment包装成flush ticket放入ticket queue
+          // seqNo < 0，说明有事件要处理
           long seqNo = docWriter.flushAllThreads();
+
           if (seqNo < 0) {
             seqNo = -seqNo;
             anyChanges = true;
           } else {
             anyChanges = false;
           }
+
           if (!anyChanges) {
             // flushCount is incremented in flushAllThreads
             flushCount.incrementAndGet();
           }
+
+          // 消费ticketQueue，发布flushed segment。
+          // 直到该次flush的所有segment都被publish后，方法才会返回
           publishFlushedSegments(true);
           flushSuccess = true;
         } finally {
           assert Thread.holdsLock(fullFlushLock);
-          ;
+
+          // success：将block queue中的dwpt移到flush queue
+          // not success：将flush queue中的dwpt的内存 index数据全abort掉
+          // 最后，更新full flush标志，并触发一次applyAllDeletes
           docWriter.finishFullFlush(flushSuccess);
+
+          // 处理事件，直到event queue中没有事件
           processEvents(false);
         }
       }
 
       if (applyAllDeletes) {
+        // 将此时bufferedUpdatesStream.updates中的所有delete packet处理掉
         applyAllDeletesAndUpdates();
       }
 
@@ -4076,6 +4132,7 @@ public class IndexWriter
     }
   }
 
+  // 将bufferedUpdatesStream.updates中的所有delete packet处理掉：先乐观处理，然后悲观处理
   private void applyAllDeletesAndUpdates() throws IOException {
     assert Thread.holdsLock(this) == false;
     flushDeletesCount.incrementAndGet();
@@ -4510,12 +4567,15 @@ public class IndexWriter
     try {
       try {
         try {
+          // 将需要应用到该merge的packet应用喽，然后做一些初始化设置
           mergeInit(merge);
           if (infoStream.isEnabled("IW")) {
             infoStream.message(
                 "IW",
                 "now merge\n  merge=" + segString(merge.segments) + "\n  index=" + segString());
           }
+
+
           mergeMiddle(merge, mergePolicy);
           mergeSuccess(merge);
           success = true;
@@ -4687,11 +4747,13 @@ public class IndexWriter
    */
   final void mergeInit(MergePolicy.OneMerge merge) throws IOException {
     assert Thread.holdsLock(this) == false;
+    // 将满足此merge的delete packets全部应用喽
     // Make sure any deletes that must be resolved before we commit the merge are complete:
     bufferedUpdatesStream.waitApplyForMerge(merge.segments, this);
 
     boolean success = false;
     try {
+      // 初始化设置，并创建merge后的SegmentCommitInfo
       _mergeInit(merge);
       success = true;
     } finally {
@@ -4704,6 +4766,7 @@ public class IndexWriter
     }
   }
 
+  // IW加锁同步
   private synchronized void _mergeInit(MergePolicy.OneMerge merge) throws IOException {
 
     testPoint("startMergeInit");
@@ -4721,6 +4784,7 @@ public class IndexWriter
       return;
     }
 
+    // 设置merge线程
     merge.mergeInit();
 
     if (merge.isAborted()) {
@@ -4737,6 +4801,7 @@ public class IndexWriter
           "IW", "now apply deletes for " + merge.segments.size() + " merging segments");
     }
 
+    // 将docValuesUpdates写入到directory
     // Must move the pending doc values updates to disk now, else the newly merged segment will not
     // see them:
     // TODO: we could fix merging to pull the merged DV iterator so we don't have to move these
@@ -4746,10 +4811,13 @@ public class IndexWriter
       checkpoint();
     }
 
+    // 获取merge后的segments文件后缀
     // Bind a new segment name here so even with
     // ConcurrentMergePolicy we keep deterministic segment
     // names.
     final String mergeSegmentName = newSegmentName();
+
+    // 创建新的SegmentInfo
     // We set the min version to null for now, it will be set later by SegmentMerger
     SegmentInfo si =
         new SegmentInfo(
@@ -4896,6 +4964,7 @@ public class IndexWriter
     testPoint("mergeMiddleStart");
     merge.checkAborted();
 
+    // 对于并发merge调度器，会用rateLimiter封一层
     Directory mergeDirectory = mergeScheduler.wrapForMerge(merge, directory);
     IOContext context = new IOContext(merge.getStoreMergeInfo());
 
@@ -4909,18 +4978,23 @@ public class IndexWriter
     // closed:
     boolean success = false;
     try {
+      // 每个segment获取对应的MergeReader
       merge.initMergeReaders(
           sci -> {
             final ReadersAndUpdates rld = getPooledInstance(sci, true);
             rld.setIsMerging();
+            // 获取MergeReader
             return rld.getReaderForMerge(context);
           });
+
       // Let the merge wrap readers
       List<CodecReader> mergeReaders = new ArrayList<>();
       Counter softDeleteCount = Counter.newCounter(false);
       for (MergePolicy.MergeReader mergeReader : merge.getMergeReader()) {
         SegmentReader reader = mergeReader.reader;
         CodecReader wrappedReader = merge.wrapForMerge(reader);
+
+        // 验证version和sort
         validateMergeReader(wrappedReader);
         if (softDeletesEnabled) {
           if (reader != wrappedReader) { // if we don't have a wrapped reader we won't preserve any
@@ -4964,6 +5038,8 @@ public class IndexWriter
         }
         mergeReaders.add(wrappedReader);
       }
+
+      // 创建SegmentMerger
       final SegmentMerger merger =
           new SegmentMerger(
               mergeReaders, merge.info.info, infoStream, dirWrapper, globalFieldNumberMap, context);
@@ -5289,6 +5365,7 @@ public class IndexWriter
               "lastCommitChangeCount=" + lastCommitChangeCount + ",changeCount=" + changeCount);
         }
 
+        // no changes
         if (pendingCommitChangeCount == lastCommitChangeCount) {
           if (infoStream.isEnabled("IW")) {
             infoStream.message("IW", "  skip startCommit(): no changes pending");
@@ -5326,6 +5403,7 @@ public class IndexWriter
 
           assert segmentInfos.getGeneration() == toSync.getGeneration();
 
+          // prepare commit：fsync目录元数据，写pending_segments文件
           // Exception here means nothing is prepared
           // (this method unwinds everything it did on
           // an exception)
@@ -5340,6 +5418,7 @@ public class IndexWriter
           }
 
           pendingCommitSet = true;
+          // 设置pendingCommit
           pendingCommit = toSync;
         }
 
@@ -5349,12 +5428,14 @@ public class IndexWriter
         final Collection<String> filesToSync;
         try {
           filesToSync = toSync.files(false);
+          // fsync索引文件
           directory.sync(filesToSync);
           success = true;
         } finally {
           if (!success) {
             pendingCommitSet = false;
             pendingCommit = null;
+            // roll back
             toSync.rollbackCommit(directory);
           }
         }
@@ -5383,6 +5464,7 @@ public class IndexWriter
         throw t;
       } finally {
         synchronized (this) {
+          // 更新segmentInfos generation
           // Have our master segmentInfos record the
           // generations we just prepared.  We do this
           // on error or success so we don't
@@ -5707,6 +5789,7 @@ public class IndexWriter
    */
   private long maybeProcessEvents(long seqNo) throws IOException {
     if (seqNo < 0) {
+      // seqNo < 0，说明有事件要处理
       seqNo = -seqNo;
       processEvents(true);
     }
@@ -6018,9 +6101,9 @@ public class IndexWriter
           // flush期间没有merge完成
           if (mergeGenCur == mergeGenStart) {
 
+            // 从bufferedUpdatesStream.updates中移除updates
             // Must do this while still holding IW lock else a merge could finish and skip carrying
             // over our updates:
-
             // Record that this packet is finished:
             bufferedUpdatesStream.finished(updates);
 
@@ -6044,6 +6127,7 @@ public class IndexWriter
       }
 
       if (finished == false) {
+        // 从bufferedUpdatesStream.updates中移除updates
         // Record that this packet is finished:
         bufferedUpdatesStream.finished(updates);
       }

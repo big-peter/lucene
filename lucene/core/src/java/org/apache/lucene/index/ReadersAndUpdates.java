@@ -770,6 +770,7 @@ final class ReadersAndUpdates {
   /** Returns a reader for merge, with the latest doc values updates and deletions. */
   synchronized MergePolicy.MergeReader getReaderForMerge(IOContext context) throws IOException {
 
+    // 获取每个field的DocValuesFieldUpdates，加入到mergingDVUpdates
     // We must carry over any still-pending DV updates because they were not
     // successfully written, e.g. because there was a hole in the delGens,
     // or they arrived after we wrote all DVs for merge but before we set
@@ -784,9 +785,11 @@ final class ReadersAndUpdates {
     }
 
     SegmentReader reader = getReader(context);
+    // 如果有新增删除没有更新到reader
     if (pendingDeletes.needsRefresh(reader)) {
       // beware of zombies:
       assert pendingDeletes.getLiveDocs() != null;
+      // 创建新SegmentReader
       reader = createNewReaderWithLatestLiveDocs(reader);
     }
     assert pendingDeletes.verifyDocCounts(reader);

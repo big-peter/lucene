@@ -351,7 +351,9 @@ final class ReaderPool implements Closeable {
       final ReadersAndUpdates rld = readerMap.get(info);
       if (rld != null) {
         assert rld.info == info;
+        // 写.liv文件
         boolean changed = rld.writeLiveDocs(directory);
+        // docValueFieldUpdate
         changed |=
             rld.writeFieldUpdates(
                 directory, fieldNumbers, completedDelGenSupplier.getAsLong(), infoStream);

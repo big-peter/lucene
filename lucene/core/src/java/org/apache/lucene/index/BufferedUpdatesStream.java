@@ -142,6 +142,8 @@ final class BufferedUpdatesStream implements Accountable {
   void waitApplyAll(IndexWriter writer) throws IOException {
     assert Thread.holdsLock(writer) == false;
     Set<FrozenBufferedUpdates> waitFor;
+
+    // 加锁，获取此时的updates列表
     synchronized (this) {
       waitFor = new HashSet<>(updates);
     }
@@ -198,8 +200,10 @@ final class BufferedUpdatesStream implements Accountable {
       maxDelGen = Math.max(maxDelGen, info.getBufferedDeletesGen());
     }
 
+    // 先获取此时要apply到mergeInfos中的packets快照
     Set<FrozenBufferedUpdates> waitFor = new HashSet<>();
     synchronized (this) {
+      // packet在publishFrozenUpdates时加入到updates中
       for (FrozenBufferedUpdates packet : updates) {
         if (packet.delGen() <= maxDelGen) {
           // We must wait for this packet before finishing the merge because its
@@ -219,10 +223,11 @@ final class BufferedUpdatesStream implements Accountable {
               + " merging segments");
     }
 
+    // 将waitFor快照中的packet应用到segments中，然后从updates中删除
     waitApply(waitFor, writer);
   }
 
-  private void waitApply(Set<FrozenBufferedUpdates> waitFor, IndexWriter writer)
+  private void  waitApply(Set<FrozenBufferedUpdates> waitFor, IndexWriter writer)
       throws IOException {
 
     long startNS = System.nanoTime();

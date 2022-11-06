@@ -151,11 +151,16 @@ final class DocumentsWriterPerThread implements Accountable {
     this.infoStream = indexWriterConfig.getInfoStream();
     this.codec = indexWriterConfig.getCodec();
     this.pendingNumDocs = pendingNumDocs;
+
+    // 保存需要应用到该dwpt中delete操作的信息
     pendingUpdates = new BufferedUpdates(segmentName);
     this.deleteQueue = Objects.requireNonNull(deleteQueue);
     assert numDocsInRAM == 0 : "num docs " + numDocsInRAM;
+
+    // 获取当前dwpt的deleteSlice对象，用来保存updateDocuments期间并发的delete操作。每次updateDocuments完成后会重置
     deleteSlice = deleteQueue.newSlice();
 
+    // 创建目前dwpt对应的segment对象
     segmentInfo =
         new SegmentInfo(
             directoryOrig,
@@ -166,7 +171,7 @@ final class DocumentsWriterPerThread implements Accountable {
             false,
             codec,
             Collections.emptyMap(),
-            StringHelper.randomId(),
+            StringHelper.randomId(),  // 生成segmentInfo的id
             Collections.emptyMap(),
             indexWriterConfig.getIndexSort());
     assert numDocsInRAM == 0;
@@ -258,6 +263,8 @@ final class DocumentsWriterPerThread implements Accountable {
     }
   }
 
+  // 将该dwpt updateDocuments期间并行的delete操作保存到pendingUpdates中
+  // 通过deleteSlice保存该期间发生的delete操作，保存完后会重置deleteSlice
   private long finishDocuments(DocumentsWriterDeleteQueue.Node<?> deleteNode, int docIdUpTo) {
     /*
      * here we actually finish the document in two steps 1. push the delete into
@@ -344,6 +351,8 @@ final class DocumentsWriterPerThread implements Accountable {
     assert flushPending.get() == Boolean.TRUE;
     assert numDocsInRAM > 0;
     assert deleteSlice.isEmpty() : "all deletes must be applied in prepareFlush";
+
+    // 将segmentInfo封装成SegmentWriteState
     segmentInfo.setMaxDoc(numDocsInRAM);
     final SegmentWriteState flushState =
         new SegmentWriteState(
@@ -405,6 +414,7 @@ final class DocumentsWriterPerThread implements Accountable {
       pendingUpdates.clearDeleteTerms();
       segmentInfo.setFiles(new HashSet<>(directory.getCreatedFiles()));
 
+      // 将segmentInfo封装成segmentCommitInfo
       final SegmentCommitInfo segmentInfoPerCommit =
           new SegmentCommitInfo(
               segmentInfo,
@@ -413,7 +423,8 @@ final class DocumentsWriterPerThread implements Accountable {
               -1L,
               -1L,
               -1L,
-              StringHelper.randomId());
+              StringHelper.randomId()  // 生成SegmentCommitInfo的id
+          );
       if (infoStream.isEnabled("DWPT")) {
         infoStream.message(
             "DWPT",
@@ -464,6 +475,7 @@ final class DocumentsWriterPerThread implements Accountable {
 
       assert segmentInfo != null;
 
+      // 将SegmentCommitInfo封装成FlushedSegment
       FlushedSegment fs =
           new FlushedSegment(
               infoStream,
@@ -473,6 +485,8 @@ final class DocumentsWriterPerThread implements Accountable {
               flushState.liveDocs,
               flushState.delCountOnFlush,
               sortMap);
+
+      // 处理复合文件，生成.si文件，.liv文件
       sealFlushedSegment(fs, sortMap, flushNotifications);
       if (infoStream.isEnabled("DWPT")) {
         infoStream.message(
@@ -539,6 +553,7 @@ final class DocumentsWriterPerThread implements Accountable {
     boolean success = false;
     try {
 
+      // 1. 处理复合文件
       if (indexWriterConfig.getUseCompoundFile()) {
         Set<String> originalFiles = newSegment.info.files();
         // TODO: like addIndexes, we are relying on createCompoundFile to successfully cleanup...
@@ -552,6 +567,7 @@ final class DocumentsWriterPerThread implements Accountable {
         newSegment.info.setUseCompoundFile(true);
       }
 
+      // 2. 生成.si文件
       // Have codec write SegmentInfo.  Must do this after
       // creating CFS so that 1) .si isn't slurped into CFS,
       // and 2) .si reflects useCompoundFile=true change
@@ -562,6 +578,7 @@ final class DocumentsWriterPerThread implements Accountable {
       // because any changes after writing the .si will be
       // lost...
 
+      // 3. 处理删除信息，生成.liv文件
       // Must write deleted docs after the CFS so we don't
       // slurp the del file into CFS:
       if (flushedSegment.liveDocs != null) {

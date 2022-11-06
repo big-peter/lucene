@@ -15,7 +15,10 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * @author BigPeter
@@ -47,7 +50,9 @@ public class MyIndex {
                 "book book is",
                 "book",
                 "book that",
-                "apple"
+                "apple",
+                "learning lucene and elasticsearch",
+                "topic"
         };
 
         String indexPath = "./resources/my/index";
@@ -96,15 +101,25 @@ public class MyIndex {
 
         sortType.freeze();
 
+
+
         try (IndexWriter indexWriter = new IndexWriter(directory, iwc)) {
+            List<CompletableFuture<Void>> allFutures = new ArrayList<>(2);
             for (int i=0; i < rawDocs.length; i+=2) {
                 Document document = new Document();
                 document.add(new Field("content", rawDocs[i], fieldType));
                 document.add(new Field("title", rawDocs[i + 1].getBytes(StandardCharsets.UTF_8), sortType));
 
-                indexWriter.addDocument(document);
+                allFutures.add(CompletableFuture.runAsync(() -> {
+                    try {
+                        indexWriter.addDocument(document);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }));
             }
 
+            CompletableFuture.allOf(allFutures.toArray(new CompletableFuture[0])).join();
             indexWriter.flush();
 
             indexWriter.commit();

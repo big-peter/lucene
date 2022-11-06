@@ -423,9 +423,11 @@ public final class Lucene90PostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
+    // 用来读.doc, .pos, .pay文件
     PostingsReaderBase postingsReader = new Lucene90PostingsReader(state);
     boolean success = false;
     try {
+      // 用来读.tim, .tip, .tmd文件
       FieldsProducer ret = new Lucene90BlockTreeTermsReader(postingsReader, state);
       success = true;
       return ret;

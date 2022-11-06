@@ -88,6 +88,7 @@ public final class SegmentReader extends CodecReader {
     // We pull liveDocs/DV updates from disk:
     this.isNRT = false;
 
+    // 创建共享的读取索引文件的reader
     core = new SegmentCoreReaders(si.info.dir, si, context);
     segDocValues = new SegmentDocValues();
 
@@ -95,6 +96,7 @@ public final class SegmentReader extends CodecReader {
     final Codec codec = si.info.getCodec();
     try {
       if (si.hasDeletions()) {
+        // 读取删除数据 .liv
         // NOTE: the bitvector is stored using the regular directory, not cfs
         hardLiveDocs =
             liveDocs = codec.liveDocsFormat().readLiveDocs(directory(), si, IOContext.READONCE);
@@ -102,6 +104,8 @@ public final class SegmentReader extends CodecReader {
         assert si.getDelCount() == 0;
         hardLiveDocs = liveDocs = null;
       }
+
+      // 需要减去删除的文档数
       numDocs = si.info.maxDoc() - si.getDelCount();
 
       fieldInfos = initFieldInfos();
@@ -197,8 +201,10 @@ public final class SegmentReader extends CodecReader {
   /** init most recent FieldInfos for the current commit */
   private FieldInfos initFieldInfos() throws IOException {
     if (!si.hasFieldUpdates()) {
+      // 没有改变
       return core.coreFieldInfos;
     } else {
+      // 有改变，重新读取
       // updates always outside of CFS
       FieldInfosFormat fisFormat = si.info.getCodec().fieldInfosFormat();
       final String segmentSuffix = Long.toString(si.getFieldInfosGen(), Character.MAX_RADIX);
