@@ -68,7 +68,7 @@ public class MyIndex {
         IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
         iwc.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
         iwc.setUseCompoundFile(false);
-//        iwc.setCodec(new SimpleTextCodec());
+        iwc.setCodec(new SimpleTextCodec());
 
         FieldType fieldType = new FieldType();
         fieldType.setOmitNorms(false);
@@ -80,6 +80,7 @@ public class MyIndex {
         fieldType.setStoreTermVectorPayloads(true);
         fieldType.setStoreTermVectorOffsets(true);
 
+//        fieldType.setDocValuesType(DocValuesType.NUMERIC);
         fieldType.setTokenized(true);
         fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
 
@@ -110,13 +111,15 @@ public class MyIndex {
                 document.add(new Field("content", rawDocs[i], fieldType));
                 document.add(new Field("title", rawDocs[i + 1].getBytes(StandardCharsets.UTF_8), sortType));
 
-                allFutures.add(CompletableFuture.runAsync(() -> {
-                    try {
-                        indexWriter.addDocument(document);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }));
+//                allFutures.add(CompletableFuture.runAsync(() -> {
+//                    try {
+//                        indexWriter.addDocument(document);
+//                    } catch (IOException e) {
+//                        throw new RuntimeException(e);
+//                    }
+//                }));
+
+                indexWriter.addDocument(document);
             }
 
             CompletableFuture.allOf(allFutures.toArray(new CompletableFuture[0])).join();

@@ -1,0 +1,90 @@
+1. segments_N文件（索引提交文件）
+    segments_N文件保存该索引目前提交的索引信息。N后缀表示commit generation，当前使用的提交文件拥有最大的gen。由于旧的提交文件还被临时引用，或者
+IndexDeletionPolicy的影响，所以可能会存在多个gen的提交文件。
+
+@startuml
+json ".segments_N File Layout" as J {
+    "Header":[
+       {"HeaderMagic\t\t": "[Int] 0x3fd76c17"},
+       {"Codec\t\t\t": "[String] Lucene90SegmentInfo"},
+       {"Version\t\t\t": "[Int] 0"},
+       {"Id\t\t\t\t": "[16 Bytes] random id"},
+       {"SuffixLength\t\t": "[Byte] 0x0A"},
+       {"Suffix\t\t\t": "[Bytes] Lucene90_0"}
+    ],
+    "SegVersion":[
+        "生成segment的lucene版本",
+        {"VAL": [
+            {"major": "[Int]"},
+            {"minor": "[Int]"},
+            {"bugfix": "[Int]"}
+        ]}
+    ],
+    "MinVersion":[
+        "包含的最小lucene生成文档的版本号，如果没有flag为0",
+        {"VAL": [
+            {"Flag": "[Byte] 0 or 1"},
+            {"Version": [
+                {"major": "[Int]"},
+                {"minor": "[Int]"},
+                {"bugfix": "[Int]"}
+            ]}
+        ]}
+     ],
+    "SegSize":[
+        "该segment中最大的docId",
+        {"VAL": [
+            "[Int] maxDoc"
+        ]}
+    ],
+    "IsCompoundFile":[
+        "是否是复合索引文件",
+        {"VAL": [
+            "[Byte] 0 or 1"
+        ]}
+    ],
+    "Diagnostics":[
+        "诊断信息，用来debug。Map<String, String>",
+        {"VAL": [
+            {"source": "[String]"},
+            {"lucene.version": "[String]"},
+            {"os": "[String]"},
+            {"os.arch": "[String]"},
+            {"os.version": "[String]"},
+            {"java.runtime.version": "[String]"},
+            {"java.vendor": "[String]"},
+            {"timestamp": "[String]"}
+        ]}
+    ],
+    "Files":[
+        "该segment包含的文件名。Set<String>",
+        {"VAL": [
+            "..."
+        ]}
+    ],
+    "Attributes":[
+        "Map<String, String>",
+        {"VAL": [
+            "..."
+        ]}
+    ],
+    "IndexSort":[
+        "Index sort相关",
+        {"VAL": [
+            {"SortFieldNum" : "[VInt]"},
+            {"List":[
+                {
+                    "fieldName": "[String]",
+                    "fieldInfo": "[Obj]"
+                },
+                "..."
+            ]}
+        ]}
+    ],
+    "Footer":[
+       {"FooterMagic\t": "[Int] 0xc02893e8"},
+       {"Zero\t\t\t": "[Int] 0"},
+       {"CRC\t\t\t": "[Long] crc"}
+    ]
+}
+@enduml

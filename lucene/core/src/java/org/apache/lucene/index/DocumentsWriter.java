@@ -424,12 +424,12 @@ final class DocumentsWriter implements Closeable, Accountable {
     boolean hasEvents = preUpdate();
 
     final DocumentsWriterPerThread dwpt = flushControl.obtainAndLock();
-    try {
+//    try {
       // TODO wj remove
-      TimeUnit.SECONDS.sleep(3);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
+//      TimeUnit.SECONDS.sleep(3);
+//    } catch (InterruptedException e) {
+//      throw new RuntimeException(e);
+//    }
     final DocumentsWriterPerThread flushingDWPT;
     long seqNo;
 

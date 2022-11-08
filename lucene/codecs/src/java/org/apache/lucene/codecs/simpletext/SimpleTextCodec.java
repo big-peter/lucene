@@ -29,6 +29,16 @@ import org.apache.lucene.codecs.SegmentInfoFormat;
 import org.apache.lucene.codecs.StoredFieldsFormat;
 import org.apache.lucene.codecs.TermVectorsFormat;
 
+/*
+  dat: docValue
+  fld: storedFields
+  inf: fieldInfos
+  len: norm
+  pst: posting
+  tvc: termVector
+  si: segment info
+  segments: commit info
+ */
 /**
  * plain text index format.
  *
