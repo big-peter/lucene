@@ -6,79 +6,79 @@ IndexDeletionPolicy的影响，所以可能会存在多个gen的提交文件。
 json ".segments_N File Layout" as J {
     "Header":[
        {"HeaderMagic\t\t": "[Int] 0x3fd76c17"},
-       {"Codec\t\t\t": "[String] Lucene90SegmentInfo"},
+       {"Codec\t\t\t": "[String] segments"},
        {"Version\t\t\t": "[Int] 0"},
        {"Id\t\t\t\t": "[16 Bytes] random id"},
        {"SuffixLength\t\t": "[Byte] 0x0A"},
        {"Suffix\t\t\t": "[Bytes] Lucene90_0"}
     ],
-    "SegVersion":[
-        "生成segment的lucene版本",
-        {"VAL": [
-            {"major": "[Int]"},
-            {"minor": "[Int]"},
-            {"bugfix": "[Int]"}
+    "LuceneVersion":[
+        "描述当前运行的Lucene版本",
+        {"val": [
+            {"major": "[VInt]"},
+            {"minor": "[VInt]"},
+            {"bugfix": "[VInt]"}
         ]}
     ],
-    "MinVersion":[
-        "包含的最小lucene生成文档的版本号，如果没有flag为0",
-        {"VAL": [
-            {"Flag": "[Byte] 0 or 1"},
-            {"Version": [
-                {"major": "[Int]"},
-                {"minor": "[Int]"},
-                {"bugfix": "[Int]"}
-            ]}
-        ]}
-     ],
-    "SegSize":[
-        "该segment中最大的docId",
-        {"VAL": [
-            "[Int] maxDoc"
+    "IndexCreatedVersionMajor":[
+        "创建该segment_N文件的Lucene的major值",
+        {"val": [
+            "[VInt]"
         ]}
     ],
-    "IsCompoundFile":[
-        "是否是复合索引文件",
-        {"VAL": [
-            "[Byte] 0 or 1"
+    "Version":[
+        "segmentInfos对象发生更改的次数",
+        {"val": [
+            "[Long]"
         ]}
     ],
-    "Diagnostics":[
-        "诊断信息，用来debug。Map<String, String>",
-        {"VAL": [
-            {"source": "[String]"},
-            {"lucene.version": "[String]"},
-            {"os": "[String]"},
-            {"os.arch": "[String]"},
-            {"os.version": "[String]"},
-            {"java.runtime.version": "[String]"},
-            {"java.vendor": "[String]"},
-            {"timestamp": "[String]"}
+    "NameCounter":[
+        "为新的segmentInfo文件提供名字的前缀值",
+        {"val": [
+            "[VLong]"
         ]}
     ],
-    "Files":[
-        "该segment包含的文件名。Set<String>",
-        {"VAL": [
+    "SegCount":[
+        "该索引包含有效的的segment个数",
+        {"val": [
+            "[Int]"
+        ]}
+    ],
+    "MinSegmentLuceneVersion":[
+        "索引目录中的.si文件的版本可能各不相同，该字段记录最小的版本",
+        {"val": [
+            {"major": "[VInt]"},
+            {"minor": "[VInt]"},
+            {"bugfix": "[VInt]"}
+        ]}
+    ],
+    "SegmentCommitInfos":[
+        "包含的segment信息列表",
+        {"val": [
+            {
+                "SegName": "[String] si文件前缀，相同前缀的文件属于同一个段",
+                "SegID": "[Bytes] 16 Byte si文件的唯一标识",
+                "SegCodec": "[String] codec name，编解码版本，比如Lucene90",
+                "DelGen": "[Long] 该段的.liv文件的迭代编号，用来命名下一次生成的liv文件",
+                "DeletionCount": "[Int] 该段中删除文档的个数",
+                "FieldInfosGen": "[Long] 该段.fnm文件的迭代编号，用来命名下一次生成的fnm文件",
+                "DocValuesGen": "[Long] 该段.dvm, .dvd文件的迭代编号，用来命名下一次生成的dvm,dvd文件",
+                "SoftDelCount": "[Int] 该段中软删除的文档个数",
+                "segCommitInfoID": [
+                    {"flag": "[Byte] o or 1"},
+                    {"sciId": "[Bytes]"}
+                ],
+                "FieldInfosFiles": "[Set<String>] 如果域的信息发生了更新，会记录最新生成的fnm文件",
+                "DVUpdatesFilesSize": "[Int]",
+                "DVUpdatesFiles": "[Map<String, Set<String>] 记录发生变化的dvd,dvm文件"
+            },
             "..."
         ]}
     ],
-    "Attributes":[
-        "Map<String, String>",
-        {"VAL": [
+    "CommitUserData":[
+        "保存commit时的自定义信息，Map<String, String>",
+        {"val": [
             "..."
-        ]}
-    ],
-    "IndexSort":[
-        "Index sort相关",
-        {"VAL": [
-            {"SortFieldNum" : "[VInt]"},
-            {"List":[
-                {
-                    "fieldName": "[String]",
-                    "fieldInfo": "[Obj]"
-                },
-                "..."
-            ]}
         ]}
     ],
     "Footer":[
