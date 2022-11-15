@@ -21,7 +21,7 @@ postings中某个docId的freq，pos，payload，offset时，能够快速在Packe
     skipList有两个参数：
         skipInterval: 每skipInterval个文档，将其写入到第0层。默认128
         skipMultiplier：对于第n层(n > 0)，n-1层每处理skipMultiplier个，将其写到第n层.默认8
-    所以正常意义的skipInterval其实是skiipMultiplier。
+    所以正常意义的skipInterval其实是skipMultiplier。
     除了第0层，其他层开始时都有length数据。
     每当处理128个doc，将docId，freq打包成一个Packed Block后，会将该Packed Block中的最后一个doc的下列信息写入SkipList：
         docSkip: docId delta, 与该层前一个docId的差值

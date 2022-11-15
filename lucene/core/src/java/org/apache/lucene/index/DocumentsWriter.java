@@ -425,7 +425,7 @@ final class DocumentsWriter implements Closeable, Accountable {
 
     final DocumentsWriterPerThread dwpt = flushControl.obtainAndLock();
 //    try {
-      // TODO wj remove
+//      // TODO wj remove
 //      TimeUnit.SECONDS.sleep(3);
 //    } catch (InterruptedException e) {
 //      throw new RuntimeException(e);

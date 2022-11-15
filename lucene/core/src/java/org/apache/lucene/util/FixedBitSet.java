@@ -226,7 +226,7 @@ public final class FixedBitSet extends BitSet {
     int i = index >> 6; // div 64
     // signed shift will keep a negative index and force an
     // array-index-out-of-bounds-exception, removing the need for an explicit check.
-    long bitmask = 1L << index;
+    long bitmask = 1L << index;  // 效果等同于 1L << (index % 64)
     return (bits[i] & bitmask) != 0;
   }
 

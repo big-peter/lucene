@@ -57,6 +57,7 @@ final class PForUtil {
     this.forUtil = forUtil;
   }
 
+  // Frame Of Reference
   // 一般out：token [(numExceptions << 5) | patchedBitsRequired] + longs [bit packing] + exceptions [(eIdx, eInc) * numExceptions]
   /** Encode 128 integers from {@code longs} into {@code out}. */
   void encode(long[] longs, DataOutput out) throws IOException {

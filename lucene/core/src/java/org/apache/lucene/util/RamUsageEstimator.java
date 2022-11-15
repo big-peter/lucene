@@ -60,6 +60,7 @@ public final class RamUsageEstimator {
   /** No instantiation. */
   private RamUsageEstimator() {}
 
+  // address >> 3. 32位地址可以表示35位地址的空间，32G
   /** True, iff compressed references (oops) are enabled by this JVM */
   public static final boolean COMPRESSED_REFS_ENABLED;
 
@@ -72,6 +73,7 @@ public final class RamUsageEstimator {
   /** Number of bytes to represent an array header (no content, but with alignments). */
   public static final int NUM_BYTES_ARRAY_HEADER;
 
+  // 8字节对齐
   /**
    * A constant specifying the object alignment boundary inside the JVM. Objects will always take a
    * full multiple of this constant, possibly wasting some space.
@@ -131,6 +133,7 @@ public final class RamUsageEstimator {
         final Object hotSpotBean =
             Class.forName(MANAGEMENT_FACTORY_CLASS)
                 .getMethod("getPlatformMXBean", Class.class)
+                  // static method, obj=null
                 .invoke(null, beanClazz);
         if (hotSpotBean != null) {
           isHotspot = true;
