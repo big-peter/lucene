@@ -483,6 +483,7 @@ public class Field implements IndexableField {
     } else if (readerValue() != null) {
       return analyzer.tokenStream(name(), readerValue());
     } else if (stringValue() != null) {
+      // 分词
       return analyzer.tokenStream(name(), stringValue());
     }
 

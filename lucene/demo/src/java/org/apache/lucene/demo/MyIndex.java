@@ -31,8 +31,8 @@ public class MyIndex {
         FileOutputStream fos = new FileOutputStream("./resources/my/osdemo/file1.txt");
         BufferedOutputStream bos = new BufferedOutputStream(fos);
         bos.write("Hello World".getBytes(StandardCharsets.UTF_8), 0, 11);
-        bos.flush();
-        fos.getFD().sync();
+        bos.flush();  // flush到文件系统缓存
+        fos.getFD().sync();  // 强制写到磁盘
         // fos.getChannel().force(true);  或者该方法
         bos.close();
 

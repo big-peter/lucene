@@ -1228,6 +1228,7 @@ final class IndexingChain implements Accountable {
        * but rather a finally that takes note of the problem.
        */
       boolean succeededInProcessingField = false;
+      // 分词
       try (TokenStream stream = tokenStream = field.tokenStream(analyzer, tokenStream)) {
         // reset the TokenStream to the first token
         stream.reset();
