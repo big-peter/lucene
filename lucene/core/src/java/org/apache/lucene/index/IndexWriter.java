@@ -1772,6 +1772,7 @@ public class IndexWriter
   public long deleteDocuments(Term... terms) throws IOException {
     ensureOpen();
     try {
+      // 将删除信息加入删除队列，并决定是否处理事件
       return maybeProcessEvents(docWriter.deleteTerms(terms));
     } catch (VirtualMachineError tragedy) {
       tragicEvent(tragedy, "deleteDocuments(Term..)");

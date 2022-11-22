@@ -257,11 +257,14 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
 
   private FrozenBufferedUpdates freezeGlobalBufferInternal(final Node<?> currentTail) {
     assert globalBufferLock.isHeldByCurrentThread();
+
+    // 将更新同步到globalSlice，且将删除数据保存到global buffer中
     if (globalSlice.sliceTail != currentTail) {
       globalSlice.sliceTail = currentTail;
       globalSlice.apply(globalBufferedUpdates, BufferedUpdates.MAX_INT);
     }
 
+    // 生成FrozenBufferedUpdates
     if (globalBufferedUpdates.any()) {
       final FrozenBufferedUpdates packet =
           new FrozenBufferedUpdates(infoStream, globalBufferedUpdates, null);
@@ -533,6 +536,7 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
 
   @Override
   public long ramBytesUsed() {
+    // 只统计global buffer的内存占用
     return globalBufferedUpdates.ramBytesUsed();
   }
 

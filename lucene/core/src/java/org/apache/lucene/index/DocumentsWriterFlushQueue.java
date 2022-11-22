@@ -37,8 +37,10 @@ final class DocumentsWriterFlushQueue {
     incTickets();
     boolean success = false;
     try {
+      // 将global delete buffer生成FrozenBufferedUpdates
       FrozenBufferedUpdates frozenBufferedUpdates = deleteQueue.maybeFreezeGlobalBuffer();
       if (frozenBufferedUpdates != null) {
+        // 将FrozenBufferedUpdates包装成FlushTicket放到ticker queue中
         // no need to publish anything if we don't have any frozen updates
         queue.add(new FlushTicket(frozenBufferedUpdates, false));
         success = true;

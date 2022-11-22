@@ -158,10 +158,16 @@ final class DocumentsWriter implements Closeable, Accountable {
     // otherwise we might lose an update / delete if this happens concurrently to a full flush.
     final DocumentsWriterDeleteQueue deleteQueue = this.deleteQueue;
     long seqNo = function.applyAsLong(deleteQueue);
+
+    // 更新flushDeletes flag
     flushControl.doOnDelete();
+
+    // 如果要flushDeletes，将global delete buffer放入ticketQueue，并发布publishFlushedSegments事件
     if (applyAllDeletes()) {
       seqNo = -seqNo;
     }
+
+    // seqNo 负数说明有事件
     return seqNo;
   }
 
@@ -175,7 +181,11 @@ final class DocumentsWriter implements Closeable, Accountable {
         && deleteQueue.isOpen()
         // if it's closed then it's already fully applied and we have a new delete queue
         && flushControl.getAndResetApplyAllDeletes()) {
+      // 没有主动flush 且 该deleteQueue没有被关闭(主动flush后会close) 且 applyAllDelete flag被置为了true
+
+      // 将global delete信息放入到ticketQueue
       if (ticketQueue.addDeletes(deleteQueue)) {
+        // 发布publishFlushedSegments事件
         flushNotifications.onDeletesApplied(); // apply deletes event forces a purge
         return true;
       }
@@ -404,6 +414,7 @@ final class DocumentsWriter implements Closeable, Accountable {
       throws IOException {
     hasEvents |= applyAllDeletes();
     if (flushingDWPT != null) {
+      // 自动flush
       hasEvents |= doFlush(flushingDWPT);
     } else if (config.checkPendingFlushOnUpdate) {
       final DocumentsWriterPerThread nextPendingFlush = flushControl.nextPendingFlush();

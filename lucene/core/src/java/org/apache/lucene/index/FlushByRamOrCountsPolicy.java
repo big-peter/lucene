@@ -48,6 +48,7 @@ class FlushByRamOrCountsPolicy extends FlushPolicy {
   @Override
   public void onDelete(DocumentsWriterFlushControl control, DocumentsWriterPerThread perThread) {
     if ((flushOnRAM()
+        // control.getDeleteBytesUsed()只统计global buffer的内存占用
         && control.getDeleteBytesUsed() > 1024 * 1024 * indexWriterConfig.getRAMBufferSizeMB())) {
       control.setApplyAllDeletes();
       if (infoStream.isEnabled("FP")) {
