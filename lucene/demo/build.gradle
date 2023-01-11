@@ -20,7 +20,8 @@ apply plugin: 'java-library'
 description = 'Simple example code for Apache Lucene'
 
 dependencies {
-  moduleImplementation project(':lucene:core')
+  implementation project(path: ':lucene:codecs')
+    moduleImplementation project(':lucene:core')
   moduleImplementation project(':lucene:facet')
   moduleImplementation project(':lucene:queries')
   moduleImplementation project(':lucene:analysis:common')
