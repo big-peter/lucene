@@ -110,6 +110,7 @@ public class IndexFiles implements AutoCloseable {
     String indexPath = "./resources/dir_index";
     String[] docsPaths = {"./lucene/core/src/java/org/apache/lucene",
       "./lucene/codecs/src/java/org/apache/lucene"};
+//    String[] docsPaths = {"./lucene"};
     String vectorDictSource = null;
     boolean create = true;
 
