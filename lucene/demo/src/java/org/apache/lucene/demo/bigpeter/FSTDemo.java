@@ -1,4 +1,4 @@
-package org.apache.lucene.demo;
+package org.apache.lucene.demo.bigpeter;
 
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;

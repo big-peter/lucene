@@ -1,6 +1,7 @@
-package org.apache.lucene.demo;
+package org.apache.lucene.demo.bigpeter;
 
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
+import org.apache.lucene.demo.bigpeter.PayloadAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
