@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+// TODO wj nrt search demo
 /** Simple command-line based search demo. */
 public class SearchFiles {
 
