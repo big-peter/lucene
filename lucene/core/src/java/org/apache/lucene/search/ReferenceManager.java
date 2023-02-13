@@ -163,6 +163,7 @@ public abstract class ReferenceManager<G> implements Closeable {
     try {
       final G reference = acquire();
       try {
+        // before callbacks
         notifyRefreshListenersBefore();
         G newReference = refreshIfNeeded(reference);
         if (newReference != null) {
@@ -179,6 +180,7 @@ public abstract class ReferenceManager<G> implements Closeable {
         }
       } finally {
         release(reference);
+        // after callbacks
         notifyRefreshListenersRefreshed(refreshed);
       }
       afterMaybeRefresh();
