@@ -342,11 +342,13 @@ public final class StandardDirectoryReader extends DirectoryReader {
     return buffer.toString();
   }
 
+  // WJ core method
   @Override
   protected DirectoryReader doOpenIfChanged() throws IOException {
     return doOpenIfChanged((IndexCommit) null);
   }
 
+  // TODO wj continue
   @Override
   protected DirectoryReader doOpenIfChanged(final IndexCommit commit) throws IOException {
     ensureOpen();

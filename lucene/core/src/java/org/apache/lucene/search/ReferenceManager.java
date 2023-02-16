@@ -151,6 +151,7 @@ public abstract class ReferenceManager<G> implements Closeable {
    */
   protected void afterClose() throws IOException {}
 
+  // WJ core method
   private void doMaybeRefresh() throws IOException {
     // it's ok to call lock() here (blocking) because we're supposed to get here
     // from either maybeRefresh() or maybeRefreshBlocking(), after the lock has
