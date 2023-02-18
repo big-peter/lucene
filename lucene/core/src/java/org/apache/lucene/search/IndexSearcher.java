@@ -766,6 +766,8 @@ public class IndexSearcher {
         rewrittenQuery = query.rewrite(reader)) {
       query = rewrittenQuery;
     }
+
+    // check clause num. if exceeded, throw exception
     query.visit(getNumClausesCheckVisitor());
     return query;
   }
