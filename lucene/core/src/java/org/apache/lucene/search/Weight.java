@@ -223,6 +223,7 @@ public abstract class Weight implements SegmentCacheable {
     @Override
     public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
         throws IOException {
+      // 设置collector的scorer. scorer - TermScorer
       collector.setScorer(scorer);
       DocIdSetIterator scorerIterator = twoPhase == null ? iterator : twoPhase.approximation();
       DocIdSetIterator competitiveIterator = collector.competitiveIterator();
@@ -301,6 +302,7 @@ public abstract class Weight implements SegmentCacheable {
         for (int doc = iterator.nextDoc();
             doc != DocIdSetIterator.NO_MORE_DOCS;
             doc = iterator.nextDoc()) {
+          // 如果该doc没有被delete
           if (acceptDocs == null || acceptDocs.get(doc)) {
             collector.collect(doc);
           }

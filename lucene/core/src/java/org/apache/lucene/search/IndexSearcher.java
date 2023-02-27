@@ -644,17 +644,22 @@ public class IndexSearcher {
   public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
       throws IOException {
     final C firstCollector = collectorManager.newCollector();
+    // 1. 重写
     query = rewrite(query, firstCollector.scoreMode().needsScores());
+    // 2. 生成weight
     final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
+    // 3. 搜索
     return search(weight, collectorManager, firstCollector);
   }
 
   private <C extends Collector, T> T search(
       Weight weight, CollectorManager<C, T> collectorManager, C firstCollector) throws IOException {
     if (executor == null || leafSlices.length <= 1) {
+      // 单线程搜索
       search(leafContexts, weight, firstCollector);
       return collectorManager.reduce(Collections.singletonList(firstCollector));
     } else {
+      // 多线程搜索
       final List<C> collectors = new ArrayList<>(leafSlices.length);
       collectors.add(firstCollector);
       final ScoreMode scoreMode = firstCollector.scoreMode();
@@ -718,6 +723,7 @@ public class IndexSearcher {
     // threaded...? the Collector could be sync'd?
     // always use single thread:
     for (LeafReaderContext ctx : leaves) { // search each subreader
+      // 1. 获取leafCollector
       final LeafCollector leafCollector;
       try {
         leafCollector = collector.getLeafCollector(ctx);
@@ -728,6 +734,8 @@ public class IndexSearcher {
         // continue with the following leaf
         continue;
       }
+
+      // 2. 生成BulkScorer. scorer - DefaultBulkScorer
       BulkScorer scorer = weight.bulkScorer(ctx);
       if (scorer != null) {
         if (queryTimeout != null) {
@@ -742,6 +750,7 @@ public class IndexSearcher {
           }
         } else {
           try {
+            // 3. 打分
             scorer.score(leafCollector, ctx.reader().getLiveDocs());
           } catch (
               @SuppressWarnings("unused")

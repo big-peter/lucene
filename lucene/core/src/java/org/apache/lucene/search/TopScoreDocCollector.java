@@ -53,6 +53,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
     @Override
     public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+      // 根据context更新docBase
       // reset the minimum competitive score
       docBase = context.docBase;
       minCompetitiveScore = 0f;
@@ -70,6 +71,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
         @Override
         public void collect(int doc) throws IOException {
+          // scorer - TermScorer
           float score = scorer.score();
 
           // This collector relies on the fact that scorers produce positive values:
@@ -82,6 +84,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
             updateGlobalMinCompetitiveScore(scorer);
           }
 
+          // 该文档分数比目前收集的文档的最小分还小,不收集
           if (score <= pqTop.score) {
             if (totalHitsRelation == TotalHits.Relation.EQUAL_TO) {
               // we just reached totalHitsThreshold, we can start setting the min
@@ -93,6 +96,8 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
             // documents with lower doc Ids. Therefore reject those docs too.
             return;
           }
+
+          // 否则, 移除堆顶文档,将该文档放入堆顶, 重新平衡
           pqTop.doc = doc + docBase;
           pqTop.score = score;
           pqTop = pq.updateTop();

@@ -36,6 +36,7 @@ public final class TermScorer extends Scorer {
   /** Construct a {@link TermScorer} that will iterate all documents. */
   public TermScorer(Weight weight, PostingsEnum postingsEnum, LeafSimScorer docScorer) {
     super(weight);
+    // iterator 迭代所有文档
     iterator = this.postingsEnum = postingsEnum;
     impactsEnum = new SlowImpactsEnum(postingsEnum);
     impactsDisi = new ImpactsDISI(impactsEnum, impactsEnum, docScorer.getSimScorer());
@@ -72,6 +73,7 @@ public final class TermScorer extends Scorer {
   @Override
   public float score() throws IOException {
     assert docID() != DocIdSetIterator.NO_MORE_DOCS;
+    // 根据freq计算分数. docScorer - LeafSimScorer
     return docScorer.score(postingsEnum.docID(), postingsEnum.freq());
   }
 

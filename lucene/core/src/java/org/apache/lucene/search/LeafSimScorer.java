@@ -57,6 +57,7 @@ public final class LeafSimScorer {
    * @see SimScorer#score(float, long)
    */
   public float score(int doc, float freq) throws IOException {
+    // scorer - BM25Similarity
     return scorer.score(freq, getNormValue(doc));
   }
 

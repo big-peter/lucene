@@ -115,6 +115,7 @@ public class TermQuery extends Query {
       } else {
         return new TermScorer(
             this,
+            // 获取该term对应的postings
             termsEnum.postings(
                 null, scoreMode.needsScores() ? PostingsEnum.FREQS : PostingsEnum.NONE),
             scorer);
@@ -135,6 +136,8 @@ public class TermQuery extends Query {
       assert termStates.wasBuiltFor(ReaderUtil.getTopLevelContext(context))
           : "The top-reader used to create Weight is not the same as the current reader's top-reader ("
               + ReaderUtil.getTopLevelContext(context);
+
+      // 先检查有没有符合条件的文档
       final TermState state = termStates.get(context);
       if (state == null) { // term is not present in that reader
         assert termNotInReader(context.reader(), term)
@@ -142,6 +145,7 @@ public class TermQuery extends Query {
         return null;
       }
       final TermsEnum termsEnum = context.reader().terms(term.field()).iterator();
+      // 移动pos到该term位置
       termsEnum.seekExact(term.bytes(), state);
       return termsEnum;
     }
