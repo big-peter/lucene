@@ -228,6 +228,7 @@ public class TermQuery extends Query {
     final IndexReaderContext context = searcher.getTopReaderContext();
     final TermStates termState;
     if (perReaderTermState == null || perReaderTermState.wasBuiltFor(context) == false) {
+      // TODO wj
       termState = TermStates.build(context, term, scoreMode.needsScores());
     } else {
       // PRTS was pre-build for this IS

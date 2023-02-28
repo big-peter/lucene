@@ -459,11 +459,13 @@ public class IndexSearcher {
     final CollectorManager<TopScoreDocCollector, TopDocs> manager =
         new CollectorManager<TopScoreDocCollector, TopDocs>() {
 
+          // 一个单线程，一个多线程安全
           private final HitsThresholdChecker hitsThresholdChecker =
               (executor == null || leafSlices.length <= 1)
                   ? HitsThresholdChecker.create(Math.max(TOTAL_HITS_THRESHOLD, numHits))
                   : HitsThresholdChecker.createShared(Math.max(TOTAL_HITS_THRESHOLD, numHits));
 
+          // 单线程为null，多线程使用MaxScoreAccumulator保证并发安全
           private final MaxScoreAccumulator minScoreAcc =
               (executor == null || leafSlices.length <= 1) ? null : new MaxScoreAccumulator();
 
@@ -643,10 +645,11 @@ public class IndexSearcher {
    */
   public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
       throws IOException {
+    // firstCollector - SimpleTopScoreDocCollector
     final C firstCollector = collectorManager.newCollector();
     // 1. 重写
     query = rewrite(query, firstCollector.scoreMode().needsScores());
-    // 2. 生成weight
+    // 2. 生成weight. weight - TermWeight
     final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
     // 3. 搜索
     return search(weight, collectorManager, firstCollector);

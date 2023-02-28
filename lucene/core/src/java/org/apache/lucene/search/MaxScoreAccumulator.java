@@ -20,6 +20,7 @@ package org.apache.lucene.search;
 import java.util.Objects;
 import java.util.concurrent.atomic.LongAccumulator;
 
+// 保存最大的DocAndScore
 /** Maintains the maximum score and its corresponding document id concurrently */
 final class MaxScoreAccumulator {
   // we use 2^10-1 to check the remainder with a bitwise operation
@@ -35,6 +36,7 @@ final class MaxScoreAccumulator {
     this.modInterval = DEFAULT_INTERVAL;
   }
 
+  // 高32位保存score[float]，低32位保存docId
   /**
    * Return the max encoded DocAndScore in a way that is consistent with {@link
    * DocAndScore#compareTo}.

@@ -92,7 +92,7 @@ public class SearchFiles {
       if (repeat > 0) { // repeat & time as benchmark
         Date start = new Date();
         for (int i = 0; i < repeat; i++) {
-          searcher.search(query, 100);
+          searcher.search(query, 10);
         }
         Date end = new Date();
         System.out.println("Time: " + (end.getTime() - start.getTime()) + "ms");
@@ -128,7 +128,7 @@ public class SearchFiles {
       throws IOException {
 
     // Collect enough docs to show 5 pages
-    TopDocs results = searcher.search(query, 5 * hitsPerPage);
+    TopDocs results = searcher.search(query, hitsPerPage);
     ScoreDoc[] hits = results.scoreDocs;
 
     int numTotalHits = Math.toIntExact(results.totalHits.value);

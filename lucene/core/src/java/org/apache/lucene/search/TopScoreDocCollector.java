@@ -71,7 +71,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
         @Override
         public void collect(int doc) throws IOException {
-          // scorer - TermScorer
+          // 打分。scorer - TermScorer
           float score = scorer.score();
 
           // This collector relies on the fact that scorers produce positive values:
@@ -80,6 +80,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
           totalHits++;
           hitsThresholdChecker.incrementHitCount();
 
+          // 每1024次更新一次
           if (minScoreAcc != null && (totalHits & minScoreAcc.modInterval) == 0) {
             updateGlobalMinCompetitiveScore(scorer);
           }
@@ -98,8 +99,10 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
           }
 
           // 否则, 移除堆顶文档,将该文档放入堆顶, 重新平衡
+          // pqTop指向堆顶，通过更新堆顶对象的属性实现和移除元素一样的效果，同时避免创建新对象
           pqTop.doc = doc + docBase;
           pqTop.score = score;
+          // 下推，pqTop重新指向堆顶元素
           pqTop = pq.updateTop();
           updateMinCompetitiveScore(scorer);
         }
@@ -248,8 +251,10 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     }
 
     if (after == null) {
+      // 不分页
       return new SimpleTopScoreDocCollector(numHits, hitsThresholdChecker, minScoreAcc);
     } else {
+      // 分页
       return new PagingTopScoreDocCollector(numHits, after, hitsThresholdChecker, minScoreAcc);
     }
   }
@@ -300,6 +305,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
     // HitQueue implements getSentinelObject to return a ScoreDoc, so we know
     // that at this point top() is already initialized.
+    // pqTop一直指向堆顶
     pqTop = pq.top();
     this.hitsThresholdChecker = hitsThresholdChecker;
     this.minScoreAcc = minScoreAcc;
