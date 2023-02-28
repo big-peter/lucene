@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>JAVA</ID>
+  <OriginalElement>org.apache.lucene.index.SegmentReader</OriginalElement>
+  <nodes>
+    <node x="1132.5" y="166.0">org.apache.lucene.codecs.FieldsProducer</node>
+    <node x="1373.5" y="166.0">org.apache.lucene.index.LeafReader</node>
+    <node x="657.5" y="446.0">org.apache.lucene.index.SegmentReader</node>
+    <node x="1289.5" y="324.0">org.apache.lucene.index.SegmentCommitInfo</node>
+    <node x="848.0" y="326.0">org.apache.lucene.index.CodecReader</node>
+    <node x="571.5" y="326.0">org.apache.lucene.index.SegmentCoreReaders</node>
+    <node x="849.5" y="164.0">org.apache.lucene.codecs.TermVectorsReader</node>
+    <node x="1368.0" y="66.0">org.apache.lucene.index.IndexReader</node>
+    <node x="617.5" y="166.0">org.apache.lucene.codecs.NormsProducer</node>
+    <node x="-93.5" y="164.0">org.apache.lucene.index.FieldInfos</node>
+    <node x="331.5" y="166.0">org.apache.lucene.codecs.StoredFieldsReader</node>
+    <node x="1047.0" y="326.0">org.apache.lucene.index.DirectoryReader</node>
+    <node x="1567.0" y="166.0">org.apache.lucene.index.CompositeReader</node>
+    <node x="123.0" y="166.0">org.apache.lucene.codecs.PointsReader</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="org.apache.lucene.index.SegmentReader" target="org.apache.lucene.index.SegmentCoreReaders" relationship="CREATE">
+      <point x="0.0" y="-16.0" />
+      <point x="60.0" y="16.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.SegmentReader" target="org.apache.lucene.index.SegmentCoreReaders" relationship="TO_ONE">
+      <point x="-37.39999999999998" y="-16.0" />
+      <point x="713.6" y="402.0" />
+      <point x="631.0" y="402.0" />
+      <point x="-60.0" y="16.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.SegmentCoreReaders" target="org.apache.lucene.codecs.FieldsProducer" relationship="TO_ONE">
+      <point x="99.66666666666663" y="-16.0" />
+      <point x="790.6666666666666" y="262.0" />
+      <point x="1231.0" y="262.0" />
+      <point x="0.0" y="16.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.SegmentCoreReaders" target="org.apache.lucene.codecs.PointsReader" relationship="TO_ONE">
+      <point x="-100.0" y="-16.0" />
+      <point x="591.0" y="302.0" />
+      <point x="211.0" y="302.0" />
+      <point x="0.0" y="16.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.SegmentCoreReaders" target="org.apache.lucene.codecs.StoredFieldsReader" relationship="TO_ONE">
+      <point x="-60.0" y="-16.0" />
+      <point x="631.0" y="262.0" />
+      <point x="451.0" y="262.0" />
+      <point x="0.0" y="16.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.LeafReader" target="org.apache.lucene.index.IndexReader" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.0" />
+      <point x="0.0" y="16.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.SegmentReader" target="org.apache.lucene.index.SegmentCommitInfo" relationship="TO_ONE">
+      <point x="80.0" y="-16.0" />
+      <point x="831.0" y="422.0" />
+      <point x="1411.0" y="422.0" />
+      <point x="0.0" y="18.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.SegmentReader" target="org.apache.lucene.index.CodecReader" relationship="GENERALIZATION">
+      <point x="40.0" y="-16.0" />
+      <point x="791.0" y="402.0" />
+      <point x="931.0" y="402.0" />
+      <point x="0.0" y="16.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.CodecReader" target="org.apache.lucene.index.LeafReader" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.0" />
+      <point x="931.0" y="282.0" />
+      <point x="1451.0" y="282.0" />
+      <point x="0.0" y="16.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.DirectoryReader" target="org.apache.lucene.index.CompositeReader" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.0" />
+      <point x="1151.0" y="302.0" />
+      <point x="1671.0" y="302.0" />
+      <point x="0.0" y="16.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.SegmentCoreReaders" target="org.apache.lucene.index.FieldInfos" relationship="TO_ONE">
+      <point x="-113.0" y="-16.0" />
+      <point x="578.0" y="282.0" />
+      <point x="551.0" y="282.0" />
+      <point x="551.0" y="222.0" />
+      <point x="-9.0" y="222.0" />
+      <point x="0.0" y="18.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.SegmentCoreReaders" target="org.apache.lucene.codecs.NormsProducer" relationship="TO_ONE">
+      <point x="20.0" y="-16.0" />
+      <point x="0.0" y="16.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.SegmentCoreReaders" target="org.apache.lucene.codecs.TermVectorsReader" relationship="TO_ONE">
+      <point x="60.0" y="-16.0" />
+      <point x="751.0" y="242.0" />
+      <point x="971.0" y="242.0" />
+      <point x="0.0" y="18.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.CompositeReader" target="org.apache.lucene.index.IndexReader" relationship="GENERALIZATION">
+      <point x="0.0" y="-16.0" />
+      <point x="1671.0" y="142.0" />
+      <point x="1451.0" y="142.0" />
+      <point x="0.0" y="16.0" />
+    </edge>
+    <edge source="org.apache.lucene.index.SegmentReader" target="org.apache.lucene.index.FieldInfos" relationship="TO_ONE">
+      <point x="-74.79999999999995" y="-16.0" />
+      <point x="676.2" y="422.0" />
+      <point x="551.0" y="422.0" />
+      <point x="551.0" y="222.0" />
+      <point x="-9.0" y="222.0" />
+      <point x="0.0" y="18.0" />
+    </edge>
+  </edges>
+  <settings layout="Hierarchic Compact" zoom="0.9179460031762837" showDependencies="true" x="850.5" y="282.0" />
+  <SelectedNodes>
+    <node>org.apache.lucene.index.SegmentReader</node>
+  </SelectedNodes>
+  <Categories />
+  <SCOPE>All</SCOPE>
+  <VISIBILITY>private</VISIBILITY>
+</Diagram>
+

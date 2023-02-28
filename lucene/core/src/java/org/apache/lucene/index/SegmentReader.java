@@ -52,14 +52,18 @@ public final class SegmentReader extends CodecReader {
   // and lookup pooled readers etc.
   private final SegmentCommitInfo originalSi;
   private final LeafMetaData metaData;
+
+  // 有效的文档号,使用FixedBitSet保存
   private final Bits liveDocs;
   private final Bits hardLiveDocs;
 
+  // 有效文档的个数
   // Normally set to si.maxDoc - si.delDocCount, unless we
   // were created as an NRT reader from IW, in which case IW
   // tells us the number of live docs:
   private final int numDocs;
 
+  // 保存不会变的信息:存储域,域索引,词向量,点数据,打分信息,域信息
   final SegmentCoreReaders core;
   final SegmentDocValues segDocValues;
 
@@ -69,6 +73,8 @@ public final class SegmentReader extends CodecReader {
    */
   final boolean isNRT;
 
+  // docValues的索引信息,通过读取.dvd .dvm文件获取
+  // 当段中的DocValues类型的索引信息发生了变更，其变更的内容用索引文件之.dvm、.dvd、索引文件之fnm来描述
   final DocValuesProducer docValuesProducer;
   final FieldInfos fieldInfos;
 

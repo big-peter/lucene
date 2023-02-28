@@ -53,15 +53,24 @@ final class SegmentCoreReaders {
   // SegmentReaders:
   private final AtomicInteger ref = new AtomicInteger(1);
 
+  // 从tim&tip,doc, pos&pay中读取域的索引信息
   final FieldsProducer fields;
+  // 从nvd,nvm中读取域的打分信息
   final NormsProducer normsProducer;
 
+  // 从fdx,fdt中读取存储域的索引信息
   final StoredFieldsReader fieldsReaderOrig;
+  // 从tvx,tvd中读取词向量的索引信息
   final TermVectorsReader termVectorsReaderOrig;
+  // 从dim,dii中读取域值为数值类型的索引信息
   final PointsReader pointsReader;
   final KnnVectorsReader knnVectorsReader;
   final CompoundDirectory cfsReader;
+
+  // 段的前缀名
   final String segment;
+
+  // 从fnm中读取域的信息
   /**
    * fieldinfos for this core: means gen=-1. this is the exact fieldinfos these codec components saw
    * at write. in the case of DV updates, SR may hold a newer version.
