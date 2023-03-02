@@ -168,6 +168,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
             updateGlobalMinCompetitiveScore(scorer);
           }
 
+          // 前面的页已经收集过了
           if (score > after.score || (score == after.score && doc <= afterDoc)) {
             // hit was collected on a previous page
             if (totalHitsRelation == TotalHits.Relation.EQUAL_TO) {
@@ -178,6 +179,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
             return;
           }
 
+          // 比topN的最小值还小，不收集
           if (score <= pqTop.score) {
             if (totalHitsRelation == TotalHits.Relation.EQUAL_TO) {
               // we just reached totalHitsThreshold, we can start setting the min
@@ -325,10 +327,12 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
     return hitsThresholdChecker.scoreMode();
   }
 
+  // 下面两个update方法主要是更新scorer的min score，使随后低于score的文档不走collect流程。【score每次更新要不不变，要么增大】
   protected void updateGlobalMinCompetitiveScore(Scorable scorer) throws IOException {
     assert minScoreAcc != null;
     DocAndScore maxMinScore = minScoreAcc.get();
     if (maxMinScore != null) {
+      // 如果当前docBase在maxMinScore之后会相等，只有在score更大时才会收集；否则，score相等时也会收集
       // since we tie-break on doc id and collect in doc id order we can require
       // the next float if the global minimum score is set on a document id that is
       // smaller than the ids in the current leaf
@@ -344,17 +348,24 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
   }
 
   protected void updateMinCompetitiveScore(Scorable scorer) throws IOException {
+    // 仅当已经收集了n个doc，且pq已满时更新
     if (hitsThresholdChecker.isThresholdReached()
         && pqTop != null
         && pqTop.score != Float.NEGATIVE_INFINITY) { // -Infinity is the score of sentinels
+
+      // 获取更大的下一个score
       // since we tie-break on doc id and collect in doc id order, we can require
       // the next float
       float localMinScore = Math.nextUp(pqTop.score);
       if (localMinScore > minCompetitiveScore) {
+        // 更新scorer的minScore，随后低于minScore的文档不再走收集流程【等于的会走】
         scorer.setMinCompetitiveScore(localMinScore);
+        // 更新relation
         totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
+        // 更新minCompetitiveScore为下一个更大的score
         minCompetitiveScore = localMinScore;
         if (minScoreAcc != null) {
+          // 更新最小score记录器
           // we don't use the next float but we register the document
           // id so that other leaves can require it if they are after
           // the current maximum

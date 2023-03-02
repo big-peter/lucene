@@ -52,15 +52,21 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
 
     TopFieldLeafCollector(FieldValueHitQueue<Entry> queue, Sort sort, LeafReaderContext context)
         throws IOException {
+      // 判断是否可以提前终止
       // as all segments are sorted in the same way, enough to check only the 1st segment for
       // indexSort
       if (searchSortPartOfIndexSort == null) {
         final Sort indexSort = context.reader().getMetaData().getSort();
+
+        // 只有按field顺序搜索且搜索顺序和索引顺序相同时才可以early terminate
         searchSortPartOfIndexSort = canEarlyTerminate(sort, indexSort);
         if (searchSortPartOfIndexSort) {
+          // 不用做冗余的skipping操作
           firstComparator.disableSkipping();
         }
       }
+
+      // FieldComparator -> LeafFieldComparator
       LeafFieldComparator[] comparators = queue.getComparators(context);
       int[] reverseMuls = queue.getReverseMul();
       if (comparators.length == 1) {
@@ -160,6 +166,7 @@ public abstract class TopFieldCollector extends TopDocsCollector<Entry> {
     if (indexSort != null) {
       final SortField[] fields1 = searchSort.getSort();
       final SortField[] fields2 = indexSort.getSort();
+      // 类似联合索引的最左匹配
       // early termination is possible if fields1 is a prefix of fields2
       if (fields1.length > fields2.length) {
         return false;
