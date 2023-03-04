@@ -15,6 +15,9 @@ import org.apache.lucene.store.FSDirectory;
 import java.io.IOException;
 import java.nio.file.Paths;
 
+/**
+ * 参考amazingkoala的画图,抽象核心对象
+ */
 public class BasicQueryDemo {
 
     private static void index() throws IOException {
@@ -76,7 +79,43 @@ public class BasicQueryDemo {
         }
     }
 
-    private static void search() throws IOException {
+    private static void termQueryDemo() throws IOException {
+        try (Directory dir = FSDirectory.open(Paths.get("./resources/search_demo"))) {
+            // TODO wj 加载索引文件过程代码
+            DirectoryReader reader = DirectoryReader.open(dir);
+            IndexSearcher indexSearcher = new IndexSearcher(reader);
+
+            indexSearcher.setSimilarity(new BM25Similarity());
+
+            Query query = new TermQuery(new Term("content", "a"));
+
+            SortField sortField = new SortedNumericSortField("orderByNumber", SortField.Type.LONG);
+            Sort sort = new Sort(sortField);
+            TopDocs topDocs = indexSearcher.search(query, 10);
+            System.out.println(topDocs);
+        }
+    }
+    private static void simpleBoolQuerySortByScoreDemo() throws IOException {
+        try (Directory dir = FSDirectory.open(Paths.get("./resources/search_demo"))) {
+            // TODO wj 加载索引文件过程代码
+            DirectoryReader reader = DirectoryReader.open(dir);
+            IndexSearcher indexSearcher = new IndexSearcher(reader);
+
+            indexSearcher.setSimilarity(new BM25Similarity());
+
+            BooleanQuery.Builder builder = new BooleanQuery.Builder();
+            builder.add(new TermQuery(new Term("content", "a")), BooleanClause.Occur.SHOULD);
+            builder.add(new TermQuery(new Term("content", "b")), BooleanClause.Occur.SHOULD);
+            builder.add(new TermQuery(new Term("content", "c")), BooleanClause.Occur.MUST_NOT);
+            builder.setMinimumNumberShouldMatch(1);
+            Query booleanQuery = builder.build();
+
+            TopDocs topDocs = indexSearcher.search(booleanQuery, 10);
+            System.out.println(topDocs);
+        }
+    }
+
+    private static void simpleBoolQuerySortByFieldDemo() throws IOException {
         try (Directory dir = FSDirectory.open(Paths.get("./resources/search_demo"))) {
             // TODO wj 加载索引文件过程代码
             DirectoryReader reader = DirectoryReader.open(dir);
@@ -100,7 +139,9 @@ public class BasicQueryDemo {
 
     public static void main(String[] args) throws IOException {
 //        index();
-        search();
+        termQueryDemo();
+        simpleBoolQuerySortByScoreDemo();
+        simpleBoolQuerySortByFieldDemo();
     }
 
 }
