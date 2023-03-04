@@ -76,6 +76,7 @@ public final class SegmentReader extends CodecReader {
   // docValues的索引信息,通过读取.dvd .dvm文件获取
   // 当段中的DocValues类型的索引信息发生了变更，其变更的内容用索引文件之.dvm、.dvd、索引文件之fnm来描述
   final DocValuesProducer docValuesProducer;
+  // 从fnm中读取域的信息
   final FieldInfos fieldInfos;
 
   /**

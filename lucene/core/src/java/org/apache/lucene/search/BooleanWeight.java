@@ -55,6 +55,7 @@ final class BooleanWeight extends Weight {
     this.similarity = searcher.getSimilarity();
     weightedClauses = new ArrayList<>();
     for (BooleanClause c : query) {
+      // 每个子clause创建weight
       Weight w =
           searcher.createWeight(
               c.getQuery(), c.isScoring() ? scoreMode : ScoreMode.COMPLETE_NO_SCORES, boost);

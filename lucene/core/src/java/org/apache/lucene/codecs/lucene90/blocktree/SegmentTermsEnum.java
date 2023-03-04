@@ -327,6 +327,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       throw new IllegalStateException("terms index was not loaded");
     }
 
+    // 如果target不在该段的term范围内
     if (fr.size() > 0 && (target.compareTo(fr.getMin()) < 0 || target.compareTo(fr.getMax()) > 0)) {
       return false;
     }

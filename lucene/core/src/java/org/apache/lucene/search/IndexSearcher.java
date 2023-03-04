@@ -597,6 +597,7 @@ public class IndexSearcher {
               + limit);
     }
     final int cappedNumHits = Math.min(numHits, limit);
+    // 重写sort
     final Sort rewrittenSort = sort.rewrite(this);
 
     final CollectorManager<TopFieldCollector, TopFieldDocs> manager =
@@ -773,6 +774,7 @@ public class IndexSearcher {
    */
   public Query rewrite(Query original) throws IOException {
     Query query = original;
+    // 不断重写,直到无法再重写为止
     for (Query rewrittenQuery = query.rewrite(reader);
         rewrittenQuery != query;
         rewrittenQuery = query.rewrite(reader)) {
@@ -788,6 +790,7 @@ public class IndexSearcher {
     if (needsScores) {
       return rewrite(original);
     } else {
+      // 不需要打分,用CSQ封装
       // Take advantage of the few extra rewrite rules of ConstantScoreQuery.
       return rewrite(new ConstantScoreQuery(original));
     }
@@ -882,6 +885,7 @@ public class IndexSearcher {
     final QueryCache queryCache = this.queryCache;
     Weight weight = query.createWeight(this, scoreMode, boost);
     if (scoreMode.needsScores() == false && queryCache != null) {
+      // 不需要打分且启用了queryCache,将权重缓存
       weight = queryCache.doCache(weight, queryCachingPolicy);
     }
     return weight;

@@ -164,6 +164,7 @@ public class BM25Similarity extends Similarity {
   public Explanation idfExplain(CollectionStatistics collectionStats, TermStatistics termStats) {
     final long df = termStats.docFreq();
     final long docCount = collectionStats.docCount();
+    // 计算idf
     final float idf = idf(df, docCount);
     return Explanation.match(
         idf,
@@ -196,10 +197,13 @@ public class BM25Similarity extends Similarity {
   @Override
   public final SimScorer scorer(
       float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+    // 1. 计算idf
     Explanation idf =
         termStats.length == 1
             ? idfExplain(collectionStats, termStats[0])
             : idfExplain(collectionStats, termStats);
+
+    // 2. 计算平均文档(Field)长度
     float avgdl = avgFieldLength(collectionStats);
 
     float[] cache = new float[256];
@@ -233,6 +237,7 @@ public class BM25Similarity extends Similarity {
       this.k1 = k1;
       this.b = b;
       this.cache = cache;
+      // idf * boost
       this.weight = boost * idf.getValue().floatValue();
     }
 

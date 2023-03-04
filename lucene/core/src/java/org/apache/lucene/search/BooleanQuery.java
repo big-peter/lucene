@@ -243,11 +243,12 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       return new MatchNoDocsQuery("empty BooleanQuery");
     }
 
-    // optimize 1-clause queries
+    // 1. optimize 1-clause queries
     if (clauses.size() == 1) {
       BooleanClause c = clauses.get(0);
       Query query = c.getQuery();
       if (minimumNumberShouldMatch == 1 && c.getOccur() == Occur.SHOULD) {
+        // 等价于用query查询
         return query;
       } else if (minimumNumberShouldMatch == 0) {
         switch (c.getOccur()) {
@@ -255,6 +256,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
           case MUST:
             return query;
           case FILTER:
+            // 不打分
             // no scoring clauses, so return a score of 0
             return new BoostQuery(new ConstantScoreQuery(query), 0);
           case MUST_NOT:
@@ -266,7 +268,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
-    // recursively rewrite
+    // 2. recursively rewrite
     {
       BooleanQuery.Builder builder = new BooleanQuery.Builder();
       builder.setMinimumNumberShouldMatch(getMinimumNumberShouldMatch());
@@ -276,6 +278,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
         BooleanClause.Occur occur = clause.getOccur();
         Query rewritten;
         if (occur == Occur.FILTER || occur == Occur.MUST_NOT) {
+          // 不用打分
           // Clauses that are not involved in scoring can get some extra simplifications
           rewritten = new ConstantScoreQuery(query).rewrite(reader);
           if (rewritten instanceof ConstantScoreQuery) {
@@ -310,9 +313,10 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
-    // remove duplicate FILTER and MUST_NOT clauses
+    // 3. remove duplicate FILTER and MUST_NOT clauses
     {
       int clauseCount = 0;
+      // clauseSets的value是set,会对加入的重复clause去重,所以可以通过两个size判断是否有重复的查询.[这里的重复只针对相同的occur内]
       for (Collection<Query> queries : clauseSets.values()) {
         clauseCount += queries.size();
       }
@@ -331,7 +335,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
-    // Check whether some clauses are both required and excluded
+    // 4. Check whether some clauses are both required and excluded
     final Collection<Query> mustNotClauses = clauseSets.get(Occur.MUST_NOT);
     if (!mustNotClauses.isEmpty()) {
       final Predicate<Query> p = clauseSets.get(Occur.MUST)::contains;
@@ -343,7 +347,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
-    // remove FILTER clauses that are also MUST clauses or that match all documents
+    // 5. remove FILTER clauses that are also MUST clauses or that match all documents
     if (clauseSets.get(Occur.FILTER).size() > 0) {
       final Set<Query> filters = new HashSet<>(clauseSets.get(Occur.FILTER));
       boolean modified = false;
@@ -366,7 +370,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
-    // convert FILTER clauses that are also SHOULD clauses to MUST clauses
+    // 6. convert FILTER clauses that are also SHOULD clauses to MUST clauses
     if (clauseSets.get(Occur.SHOULD).size() > 0 && clauseSets.get(Occur.FILTER).size() > 0) {
       final Collection<Query> filters = clauseSets.get(Occur.FILTER);
       final Collection<Query> shoulds = clauseSets.get(Occur.SHOULD);
@@ -394,19 +398,25 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
-    // Deduplicate SHOULD clauses by summing up their boosts
+    // 7. Deduplicate SHOULD clauses by summing up their boosts
     if (clauseSets.get(Occur.SHOULD).size() > 0 && minimumNumberShouldMatch <= 1) {
       Map<Query, Double> shouldClauses = new HashMap<>();
       for (Query query : clauseSets.get(Occur.SHOULD)) {
         double boost = 1;
         while (query instanceof BoostQuery) {
           BoostQuery bq = (BoostQuery) query;
+          // 嵌套的BoostQuery的boost通过累乘获取
           boost *= bq.getBoost();
           query = bq.getQuery();
         }
+
+        // 相同query的boost通过累加获取
         shouldClauses.put(query, shouldClauses.getOrDefault(query, 0d) + boost);
       }
+
+      // 多个clause包含相同的query
       if (shouldClauses.size() != clauseSets.get(Occur.SHOULD).size()) {
+        // 注意外层if的条件是minimumNumberShouldMatch<=0,所以此处直接用minimumNumberShouldMatch,不用减去重复的个数
         BooleanQuery.Builder builder =
             new BooleanQuery.Builder().setMinimumNumberShouldMatch(minimumNumberShouldMatch);
         for (Map.Entry<Query, Double> entry : shouldClauses.entrySet()) {
@@ -426,7 +436,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
-    // Deduplicate MUST clauses by summing up their boosts
+    // 8. Deduplicate MUST clauses by summing up their boosts
     if (clauseSets.get(Occur.MUST).size() > 0) {
       Map<Query, Double> mustClauses = new HashMap<>();
       for (Query query : clauseSets.get(Occur.MUST)) {
@@ -458,7 +468,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
-    // Rewrite queries whose single scoring clause is a MUST clause on a
+    // 9. Rewrite queries whose single scoring clause is a MUST clause on a
     // MatchAllDocsQuery to a ConstantScoreQuery
     {
       final Collection<Query> musts = clauseSets.get(Occur.MUST);
@@ -508,7 +518,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
-    // Flatten nested disjunctions, this is important for block-max WAND to perform well
+    // 10. Flatten nested disjunctions, this is important for block-max WAND to perform well
     if (minimumNumberShouldMatch <= 1) {
       BooleanQuery.Builder builder = new BooleanQuery.Builder();
       builder.setMinimumNumberShouldMatch(minimumNumberShouldMatch);
@@ -533,7 +543,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
-    // SHOULD clause count less than or equal to minimumNumberShouldMatch
+    // 11. SHOULD clause count less than or equal to minimumNumberShouldMatch
     // Important(this can only be processed after nested clauses have been flattened)
     {
       final Collection<Query> shoulds = clauseSets.get(Occur.SHOULD);

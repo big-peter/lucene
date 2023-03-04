@@ -8,6 +8,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.*;
+import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
@@ -44,6 +45,8 @@ public class BasicQueryDemo {
             doc.add(new NumericDocValuesField("orderByNumber", 3));
             indexWriter.addDocument(doc);
 
+            indexWriter.flush();
+
             doc = new Document();
             doc.add(new StringField("title", "doc3", Field.Store.YES));
             doc.add(new TextField("content", "b f", Field.Store.YES));
@@ -61,6 +64,8 @@ public class BasicQueryDemo {
             doc.add(new TextField("content", "k", Field.Store.YES));
             indexWriter.addDocument(doc);
 
+            indexWriter.flush();
+
             doc = new Document();
             doc.add(new StringField("title", "doc6", Field.Store.YES));
             doc.add(new TextField("content", "e g", Field.Store.YES));
@@ -73,8 +78,11 @@ public class BasicQueryDemo {
 
     private static void search() throws IOException {
         try (Directory dir = FSDirectory.open(Paths.get("./resources/search_demo"))) {
+            // TODO wj 加载索引文件过程代码
             DirectoryReader reader = DirectoryReader.open(dir);
             IndexSearcher indexSearcher = new IndexSearcher(reader);
+
+            indexSearcher.setSimilarity(new BM25Similarity());
 
             BooleanQuery.Builder builder = new BooleanQuery.Builder();
             builder.add(new TermQuery(new Term("content", "a")), BooleanClause.Occur.SHOULD);
@@ -91,7 +99,7 @@ public class BasicQueryDemo {
     }
 
     public static void main(String[] args) throws IOException {
-        index();
+//        index();
         search();
     }
 
