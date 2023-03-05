@@ -37,6 +37,7 @@ public final class TermStates {
 
   // Important: do NOT keep hard references to index readers
   private final Object topReaderContextIdentity;
+  // 每个TermState表示一个segment中的结果
   private final TermState[] states;
   private final Term term; // null if stats are to be used
   private int docFreq;
@@ -112,7 +113,7 @@ public final class TermStates {
   }
 
   private static TermsEnum loadTermsEnum(LeafReaderContext ctx, Term term) throws IOException {
-    // 获取该field的terms
+    // 获取该segment中该field的Terms
     final Terms terms = Terms.getTerms(ctx.reader(), term.field());
     final TermsEnum termsEnum = terms.iterator();
     if (termsEnum.seekExact(term.bytes())) {

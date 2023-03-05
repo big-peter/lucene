@@ -28,6 +28,8 @@ public class BasicQueryDemo {
             }
 
             IndexWriterConfig iwf = new IndexWriterConfig(analyzer);
+            iwf.setUseCompoundFile(false);
+
             IndexWriter indexWriter = new IndexWriter(dir, iwf);
 
             Document doc = new Document();
@@ -140,8 +142,8 @@ public class BasicQueryDemo {
     public static void main(String[] args) throws IOException {
 //        index();
         termQueryDemo();
-        simpleBoolQuerySortByScoreDemo();
-        simpleBoolQuerySortByFieldDemo();
+//        simpleBoolQuerySortByScoreDemo();
+//        simpleBoolQuerySortByFieldDemo();
     }
 
 }
