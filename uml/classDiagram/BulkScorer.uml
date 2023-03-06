@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>JAVA</ID>
+  <OriginalElement>org.apache.lucene.search.BulkScorer</OriginalElement>
+  <nodes>
+    <node x="354.5" y="51.0">org.apache.lucene.search.BulkScorer</node>
+    <node x="-83.0" y="129.0">org.apache.lucene.search.BooleanScorer</node>
+    <node x="554.0" y="280.0">org.apache.lucene.codecs.lucene90.Lucene90PostingsReader.BlockDocsEnum</node>
+    <node x="20.25" y="358.0">org.apache.lucene.search.Scorer</node>
+    <node x="-99.0" y="436.0">org.apache.lucene.search.TermScorer</node>
+    <node x="11.75" y="280.0">org.apache.lucene.search.Scorable</node>
+    <node x="62.0" y="436.0">org.apache.lucene.search.ConstantScoreScorer</node>
+    <node x="763.0" y="129.0">org.apache.lucene.search.Weight.DefaultBulkScorer</node>
+    <node x="100.0" y="129.0">org.apache.lucene.facet.DrillSidewaysScorer</node>
+    <node x="324.0" y="129.0">org.apache.lucene.search.ReqExclBulkScorer</node>
+    <node x="-99.0" y="207.0">org.apache.lucene.search.BooleanScorer.BulkScorerAndDoc</node>
+    <node x="539.0" y="129.0">org.apache.lucene.search.ConstantScoreQuery.ConstantBulkScorer</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="org.apache.lucene.search.ReqExclBulkScorer" target="org.apache.lucene.search.BulkScorer" relationship="GENERALIZATION">
+      <point x="0.0" y="-14.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.facet.DrillSidewaysScorer" target="org.apache.lucene.search.BulkScorer" relationship="GENERALIZATION">
+      <point x="1.1368683772161603E-13" y="-14.0" />
+      <point x="202.0000000000001" y="104.0" />
+      <point x="421.5" y="104.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.search.TermScorer" target="org.apache.lucene.search.Scorer" relationship="GENERALIZATION">
+      <point x="0.0" y="-14.0" />
+      <point x="-28.5" y="411.0" />
+      <point x="70.75" y="411.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.search.ConstantScoreQuery.ConstantBulkScorer" target="org.apache.lucene.search.BulkScorer" relationship="GENERALIZATION">
+      <point x="0.0" y="-14.0" />
+      <point x="641.0" y="104.0" />
+      <point x="421.5" y="104.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.search.BooleanScorer" target="org.apache.lucene.search.BulkScorer" relationship="GENERALIZATION">
+      <point x="0.0" y="-14.0" />
+      <point x="-1.5" y="104.0" />
+      <point x="421.5" y="104.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.search.BooleanScorer.BulkScorerAndDoc" target="org.apache.lucene.search.BooleanScorer" relationship="INNER_CLASS">
+      <point x="0.0" y="-14.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.search.Scorer" target="org.apache.lucene.search.Scorable" relationship="GENERALIZATION">
+      <point x="0.0" y="-14.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.search.ConstantScoreScorer" target="org.apache.lucene.search.Scorer" relationship="GENERALIZATION">
+      <point x="0.0" y="-14.0" />
+      <point x="170.0" y="411.0" />
+      <point x="70.75" y="411.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+    <edge source="org.apache.lucene.search.Weight.DefaultBulkScorer" target="org.apache.lucene.search.BulkScorer" relationship="GENERALIZATION">
+      <point x="0.0" y="-14.0" />
+      <point x="857.5" y="104.0" />
+      <point x="421.5" y="104.0" />
+      <point x="0.0" y="14.0" />
+    </edge>
+  </edges>
+  <settings layout="Hierarchic" zoom="1.4453781512605042" showDependencies="false" x="436.5" y="267.5" />
+  <SelectedNodes>
+    <node>org.apache.lucene.search.ReqExclBulkScorer</node>
+  </SelectedNodes>
+  <Categories>
+    <Category>Inner Classes</Category>
+  </Categories>
+  <SCOPE>All</SCOPE>
+  <VISIBILITY>private</VISIBILITY>
+</Diagram>
+

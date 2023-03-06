@@ -1,0 +1,29 @@
+@startuml
+
+!theme plain
+top to bottom direction
+skinparam linetype ortho
+
+class BlockDocsEnum
+class BooleanScorer
+class BulkScorer
+class BulkScorerAndDoc
+class ConstantBulkScorer
+class ConstantScoreScorer
+class DefaultBulkScorer
+class DrillSidewaysScorer
+class ReqExclBulkScorer
+class Scorable
+class Scorer
+class TermScorer
+
+BooleanScorer        -[#000082,plain]-^  BulkScorer          
+BulkScorerAndDoc     +-[#820000,plain]-  BooleanScorer       
+ConstantBulkScorer   -[#000082,plain]-^  BulkScorer          
+ConstantScoreScorer  -[#000082,plain]-^  Scorer              
+DefaultBulkScorer    -[#000082,plain]-^  BulkScorer          
+DrillSidewaysScorer  -[#000082,plain]-^  BulkScorer          
+ReqExclBulkScorer    -[#000082,plain]-^  BulkScorer          
+Scorer               -[#000082,plain]-^  Scorable            
+TermScorer           -[#000082,plain]-^  Scorer              
+@enduml
