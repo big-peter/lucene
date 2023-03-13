@@ -22,6 +22,7 @@ import java.util.List;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
+// todo WJ current, 从ImpactsDISI看起
 /**
  * {@link ImpactsEnum} that doesn't index impacts but implements the API in a legal way. This is
  * typically used for short postings that do not need skipping.
