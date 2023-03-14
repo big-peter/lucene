@@ -73,7 +73,7 @@ public final class TermScorer extends Scorer {
   @Override
   public float score() throws IOException {
     assert docID() != DocIdSetIterator.NO_MORE_DOCS;
-    // 根据freq计算分数. docScorer - LeafSimScorer
+    // 根据freq计算分数. docScorer - LeafSimScorer, 获取当前docId的docId和freq.注意此处的postingsEnum和调用方BulkScorer传过来的iterator一样
     return docScorer.score(postingsEnum.docID(), postingsEnum.freq());
   }
 

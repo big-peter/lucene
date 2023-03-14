@@ -299,6 +299,7 @@ public abstract class Weight implements SegmentCacheable {
         Bits acceptDocs)
         throws IOException {
       if (twoPhase == null) {
+        // 获取到下一个docId
         for (int doc = iterator.nextDoc();
             doc != DocIdSetIterator.NO_MORE_DOCS;
             doc = iterator.nextDoc()) {

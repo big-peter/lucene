@@ -62,6 +62,7 @@ public abstract class TopDocsCollector<T extends ScoreDoc> implements Collector 
    */
   protected void populateResults(ScoreDoc[] results, int howMany) {
     for (int i = howMany - 1; i >= 0; i--) {
+      // 从后往前填充
       results[i] = pq.pop();
     }
   }
@@ -153,6 +154,7 @@ public abstract class TopDocsCollector<T extends ScoreDoc> implements Collector 
     howMany = Math.min(size - start, howMany);
     ScoreDoc[] results = new ScoreDoc[howMany];
 
+    // 把哨兵值弹出去
     // pq's pop() returns the 'least' element in the queue, therefore need
     // to discard the first ones, until we reach the requested range.
     // Note that this loop will usually not be executed, since the common usage
@@ -162,6 +164,7 @@ public abstract class TopDocsCollector<T extends ScoreDoc> implements Collector 
       pq.pop();
     }
 
+    // 从优先级队列中获取topN doc
     // Get the requested results from pq.
     populateResults(results, howMany);
 
