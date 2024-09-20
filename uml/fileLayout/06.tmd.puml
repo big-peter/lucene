@@ -2,7 +2,7 @@
     tmd文件保存tip文件中FST的元数据，以及字段级别统计数据。
 
 @startuml
-json ".tmd File Layout" as J {
+json ".tmd File Layout \n 保存tip文件中FST的元数据，以及字段级别统计数据" as J {
    "Header":[
       {"HeaderMagic\t\t": "[Int] 0x3fd76c17"},
       {"Codec\t\t\t": "[String] BlockTreeTermsMeta"},

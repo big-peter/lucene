@@ -44,7 +44,7 @@ postings中某个docId的freq，pos，payload，offset时，能够快速在Packe
     skipInterval = 3, skipMultiplier = 2
 
 @startuml
-json ".doc File Layout" as J {
+json ".doc File Layout \n 存储文档的倒排索引，如term的posting docId，freq 以及term的skipList" as J {
    "Header":[
       {"HeaderMagic\t": "[Int] 0x3fd76c17"},
       {"Codec\t\t": "[String] Lucene90PostingsWriterDoc"},

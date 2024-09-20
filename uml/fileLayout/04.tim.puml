@@ -27,7 +27,7 @@
     保存suffixLength时，如果所有的suffixLength都相等(不超过1byte)，只会保存第一个byte。【针对结构化数据，比如id】
 
 @startuml
-json ".tim File Layout" as J {
+json ".tim File Layout \n 存储词典，如term后缀，term统计（docFreq，totalTermFreq），term元数据（该term在doc，pos，pay文件开始的FP，以及pos文件中VInt Block开始的FP，\n doc文件中skipList开始的offset）" as J {
    "Header":[
       {"HeaderMagic\t": "[Int] 0x3fd76c17"},
       {"Codec\t\t": "[String] BlockTreeTermsDict"},

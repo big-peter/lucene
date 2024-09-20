@@ -2,7 +2,7 @@
     pos文件保存term的position信息，对于不满128的payload，offset信息，也保存在pos文件中。
 
 @startuml
-json ".pos File Layout" as J {
+json ".pos File Layout \n 存储词位信息" as J {
    "Header":[
       {"HeaderMagic\t": "[Int] 0x3fd76c17"},
       {"Codec\t\t": "[String] Lucene90PostingsWriterPos"},

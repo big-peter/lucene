@@ -13,7 +13,7 @@ input无序，首先获取公共前缀比较困难，需要和之前所有的key
     后面会解析
 
 @startuml
-json ".tip File Layout" as J {
+json ".tip File Layout \n 词典索引文件，用于加速词典查找" as J {
    "Header":[
       {"HeaderMagic\t": "[Int] 0x3fd76c17"},
       {"Codec\t\t": "[String] BlockTreeTermsIndex"},

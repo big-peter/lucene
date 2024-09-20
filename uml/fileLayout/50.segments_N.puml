@@ -3,7 +3,7 @@
 IndexDeletionPolicy的影响，所以可能会存在多个gen的提交文件。
 
 @startuml
-json ".segments_N File Layout" as J {
+json ".segments_N File Layout /n 保存该索引目前提交的索引信息" as J {
     "Header":[
        {"HeaderMagic\t\t": "[Int] 0x3fd76c17"},
        {"Codec\t\t\t": "[String] segments"},

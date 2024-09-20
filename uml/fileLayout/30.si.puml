@@ -1,8 +1,8 @@
 1. si文件（segmentInfo, 段信息文件）
-    si文件flush的段的信息：自动flush的dwpt会生成一个段；主动flush时所有的dwpt会各自生成一个段。
+    记录段的元数据。si文件flush的段的信息：自动flush的dwpt会生成一个段；主动flush时所有的dwpt会各自生成一个段。
 
 @startuml
-json ".si File Layout" as J {
+json ".si File Layout \n 段信息文件，记录段的元数据" as J {
     "Header":[
        {"HeaderMagic\t\t": "[Int] 0x3fd76c17"},
        {"Codec\t\t\t": "[String] Lucene90SegmentInfo"},

@@ -2,7 +2,7 @@
     pay文件保存term的payload，offset信息。注意payload只保存packed block（即每128个），不满128的payload，offset保存在pos文件中。
 
 @startuml
-json ".pay File Layout" as J {
+json ".pay File Layout \n 存储词条的额外数据，如payload和offset" as J {
    "Header":[
       {"HeaderMagic\t": "[Int] 0x3fd76c17"},
       {"Codec\t\t": "[String] Lucene90PostingsWriterPay"},
