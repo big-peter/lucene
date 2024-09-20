@@ -202,7 +202,6 @@ public class TopDocs {
   public static TopDocs merge(int topN, TopDocs[] shardHits) {
     return merge(0, topN, shardHits);
   }
-
   /**
    * Same as {@link #merge(int, TopDocs[])} but also ignores the top {@code start} top docs. This is
    * typically useful for pagination.

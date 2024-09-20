@@ -74,6 +74,7 @@ public final class ImpactsDISI extends DocIdSetIterator {
    * @see Scorer#advanceShallow(int)
    */
   public int advanceShallow(int target) throws IOException {
+    // 底层是跳表实现
     impactsSource.advanceShallow(target);
     Impacts impacts = impactsSource.getImpacts();
     return impacts.getDocIdUpTo(0);

@@ -71,7 +71,7 @@ public abstract class TopScoreDocCollector extends TopDocsCollector<ScoreDoc> {
 
         @Override
         public void collect(int doc) throws IOException {
-          // 打分。scorer - TermScorer
+          // 打分。scorer - TermScorer,从postingenum中获取freq来计算分数
           float score = scorer.score();
 
           // This collector relies on the fact that scorers produce positive values:

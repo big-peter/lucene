@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
 
+// 多个整数压缩编码
 // Inspired from https://fulmicoton.com/posts/bitpacking/
 // Encodes multiple integers in a long to get SIMD-like speedups.
 // If bitsPerValue <= 8 then we pack 8 ints per long
